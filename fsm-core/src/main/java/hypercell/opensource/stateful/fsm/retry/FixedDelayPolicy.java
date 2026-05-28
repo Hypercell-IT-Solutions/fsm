@@ -2,6 +2,13 @@ package hypercell.opensource.stateful.fsm.retry;
 
 import java.time.Duration;
 
+/**
+ * A {@link RetryPolicy} that waits the same fixed duration between every attempt.
+ * <p>
+ * Example — {@code fixedDelay(3, 30s)}: retries at +30s, +30s, +30s, then stops.
+ * <p>
+ * Obtain via {@link hypercell.opensource.stateful.fsm.StateMachine#fixedDelay}.
+ */
 public class FixedDelayPolicy implements RetryPolicy {
     private final int maxAttempts;
     private final Duration delay;

@@ -24,16 +24,18 @@ import java.util.function.Function;
  * Fluent builder for state machine definitions.
  * <p>
  * Usage:
+ * <pre>{@code
  * StateMachine.<Ctx>define("machine-id")
- * .initial("STATE_A")
- * .listener(StateMachine.loggingListener("[TAG]"))
- * .snapshotRepository(StateMachine.inMemoryRepository())
- * .state("STATE_A")
- * .subStep("step-1", ctx -> doWork(ctx))
- * .on("EVENT").to("STATE_B").end()
- * .and()
- * .state("STATE_B").terminal().and()
- * .build();
+ *     .initial("STATE_A")
+ *     .listener(StateMachine.loggingListener("[TAG]"))
+ *     .snapshotRepository(StateMachine.inMemoryRepository())
+ *     .state("STATE_A")
+ *         .subStep("step-1", ctx -> doWork(ctx))
+ *         .on("EVENT").to("STATE_B").end()
+ *         .and()
+ *     .state("STATE_B").terminal().and()
+ *     .build();
+ * }</pre>
  *
  * @param <C> the context type flowing through the machine
  */
@@ -55,31 +57,71 @@ public class StateMachineBuilder<C> {
         this.id = id;
     }
 
+    /**
+     * Set the name of the state the machine enters when a new instance is created.
+     * Required — {@link #build()} throws if not called.
+     */
     public StateMachineBuilder<C> initial(String s) {
         initialStateName = s;
         return this;
     }
 
+    /**
+     * Set the repository used to persist snapshots on failure and load them on resume.
+     * Required when using any retry policy other than {@link NoAutoRetryPolicy}.
+     * Optional for manual-only recovery (you may call {@code instance.proceed()} yourself).
+     */
     public StateMachineBuilder<C> snapshotRepository(SnapshotRepository r) {
         snapshotRepository = r;
         return this;
     }
 
+    /**
+     * Set the retry policy applied after a sub-step failure.
+     * Defaults to {@link NoAutoRetryPolicy} (snapshot saved but no auto-retry).
+     * If set to any other policy, both {@link #snapshotRepository} and
+     * {@link #contextLoader} must also be configured; {@link #build()} will throw otherwise.
+     */
     public StateMachineBuilder<C> retryPolicy(RetryPolicy p) {
         retryPolicy = p;
         return this;
     }
 
+    /**
+     * Set the scheduler used to execute retries after the backoff delay.
+     * Defaults to a built-in 2-thread daemon pool when not specified.
+     * Use {@link hypercell.opensource.stateful.fsm.retry.ThreadPoolRetryScheduler} or a custom
+     * implementation for higher throughput or distributed scheduling.
+     */
     public StateMachineBuilder<C> retryScheduler(RetryScheduler s) {
         retryScheduler = s;
         return this;
     }
 
+    /**
+     * Set the function that loads a fresh context for a given execution ID.
+     * Called by the retry coordinator before each auto-retry attempt, and by
+     * the manager on every request.
+     * <p>
+     * The loader must restore all intermediate results that completed sub-steps
+     * wrote to durable storage, so that the resumed context is equivalent to the
+     * context at the point of failure. See the
+     * <a href="https://github.com/hypercell/fsm-library/blob/main/docs/05-persistence-and-retry.md#context-on-resume">Context on resume</a>
+     * documentation.
+     * <p>
+     * Required when using any retry policy other than {@link NoAutoRetryPolicy}.
+     */
     public StateMachineBuilder<C> contextLoader(Function<String, C> l) {
         contextLoader = l;
         return this;
     }
 
+    /**
+     * Override the default sub-step skip logic used during {@code proceed()}.
+     * The default ({@link hypercell.opensource.stateful.fsm.resume.DefaultResumePolicy}) skips
+     * sub-steps that have a success record in the execution record. Override only
+     * if you need custom skip logic (e.g. always re-run certain steps).
+     */
     public StateMachineBuilder<C> resumePolicy(ResumePolicy<C> p) {
         resumePolicy = p;
         return this;
@@ -106,6 +148,14 @@ public class StateMachineBuilder<C> {
         return this;
     }
 
+    /**
+     * Begin defining a state inline using the fluent DSL.
+     * Chain sub-step, hook, and transition calls on the returned {@link StateBuilder},
+     * then close with {@code .and()} to return here.
+     *
+     * @param name unique state name; must not contain {@code ::}
+     * @throws StateMachineConfigurationException if the name contains {@code ::}
+     */
     public StateBuilder<C> state(String name) {
         if (name.contains("::")) throw new StateMachineConfigurationException(
                 "State name '" + name + "' contains reserved separator '::'.");

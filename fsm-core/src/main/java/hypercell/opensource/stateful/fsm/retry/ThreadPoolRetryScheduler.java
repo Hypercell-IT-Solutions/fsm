@@ -7,12 +7,34 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.*;
 
+/**
+ * A {@link RetryScheduler} backed by a {@link java.util.concurrent.ScheduledExecutorService}.
+ * <p>
+ * Executes retries on a pool of named daemon threads ({@code "fsm-retry-scheduler"}).
+ * Pending futures are tracked in a {@link java.util.concurrent.ConcurrentHashMap} to
+ * support cancellation. Exceptions thrown by a retry action are caught and logged;
+ * they do not affect other scheduled retries.
+ * <p>
+ * DEFAULT POOL SIZE: 10 threads (configurable via constructor).
+ * For most single-JVM deployments, 2 threads is sufficient. Use a larger pool only
+ * if many executions can fail and need simultaneous retry.
+ * <p>
+ * THREAD SAFETY: thread-safe.
+ * <p>
+ * Obtain via {@link hypercell.opensource.stateful.fsm.StateMachine#threadPoolScheduler(int)}.
+ */
 public class ThreadPoolRetryScheduler implements RetryScheduler {
     private static final Logger log = LoggerFactory.getLogger(ThreadPoolRetryScheduler.class);
 
     private final ScheduledExecutorService executor;
     private final Map<String, ScheduledFuture<?>> pending = new ConcurrentHashMap<>();
 
+    /**
+     * Create a scheduler with the given thread pool size.
+     *
+     * @param threadPoolSize number of daemon threads dedicated to running retries;
+     *                       2 is sufficient for most single-JVM deployments
+     */
     public ThreadPoolRetryScheduler(int threadPoolSize) {
         this.executor = Executors.newScheduledThreadPool(threadPoolSize, r -> {
             Thread t = new Thread(r, "fsm-retry-scheduler");
@@ -21,6 +43,7 @@ public class ThreadPoolRetryScheduler implements RetryScheduler {
         });
     }
 
+    /** Create a scheduler with the default pool size of 10 threads. */
     public ThreadPoolRetryScheduler() {
         this(10);
     }

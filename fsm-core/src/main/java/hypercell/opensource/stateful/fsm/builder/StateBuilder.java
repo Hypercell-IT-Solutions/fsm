@@ -11,6 +11,25 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+/**
+ * Fluent builder for defining a single state.
+ * <p>
+ * Obtained from {@link StateMachineBuilder#state(String)}. Chain calls to add
+ * sub-steps, hooks, and transitions, then call {@link #and()} to register the state
+ * and return to the machine builder.
+ * <p>
+ * Example:
+ * <pre>{@code
+ * .state("PROCESSING")
+ *     .onEntry(ctx -> ctx.setStartedAt(Instant.now()))
+ *     .subStep("reserve-stock",  ctx -> reserveStock(ctx))
+ *     .subStep("charge-payment", ctx -> chargePayment(ctx))
+ *     .on("COMPLETE").to("SHIPPED").end()
+ *     .and()
+ * }</pre>
+ *
+ * @param <C> the context type flowing through the machine
+ */
 public class StateBuilder<C> {
     private final StateMachineBuilder<C> parent;
     private final String name;
@@ -24,6 +43,14 @@ public class StateBuilder<C> {
         this.name = name;
     }
 
+    /**
+     * Register a callback invoked when the machine enters this state, after the
+     * transition action and before sub-steps run.
+     * <p>
+     * Multiple calls compose: all registered functions run in registration order.
+     * Hooks are NOT tracked for retry — they re-run on every entry, including resumes.
+     * Keep them idempotent or side-effect-free; use sub-steps for non-idempotent work.
+     */
     public StateBuilder<C> onEntry(Consumer<C> fn) {
         StateHook<C> existing = compositeHook;
         compositeHook = new StateHook<C>() {
@@ -41,6 +68,13 @@ public class StateBuilder<C> {
         return this;
     }
 
+    /**
+     * Register a callback invoked before the machine leaves this state (when a
+     * transition fires). Not called if the machine fails mid-state.
+     * <p>
+     * Multiple calls compose: all registered functions run in registration order.
+     * Same idempotency guidance as {@link #onEntry}.
+     */
     public StateBuilder<C> onExit(Consumer<C> fn) {
         StateHook<C> existing = compositeHook;
         compositeHook = new StateHook<C>() {
@@ -66,6 +100,17 @@ public class StateBuilder<C> {
         return subStep(handler.name(), handler::execute);
     }
 
+    /**
+     * Add a named sub-step with an inline action lambda.
+     * <p>
+     * Sub-steps are executed in the order they are added. On resume after failure,
+     * completed sub-steps are skipped; only the failed step and those after it re-run.
+     *
+     * @param name   stable snapshot key — treat like a DB column name; renaming breaks
+     *               existing snapshots
+     * @param action the work to perform; may read and write the context
+     * @throws StateMachineConfigurationException if the name is a duplicate or contains {@code ::}
+     */
     public StateBuilder<C> subStep(String name, Action<C> action) {
         if (subSteps.stream().anyMatch(s -> s.name().equals(name)))
             throw new StateMachineConfigurationException(
@@ -77,15 +122,32 @@ public class StateBuilder<C> {
         return this;
     }
 
+    /**
+     * Begin defining a transition from this state for the given event name.
+     * Multiple calls with the same event name add multiple transitions; they are
+     * evaluated in definition order and the first whose guard returns {@code true} fires.
+     *
+     * @return a {@link TransitionBuilder}; call {@code .to(...).end()} to close it
+     */
     public TransitionBuilder<C> on(String event) {
         return new TransitionBuilder<>(this, event);
     }
 
+    /**
+     * Mark this state as terminal (the end of the workflow).
+     * When the machine enters a terminal state and all its sub-steps complete,
+     * the instance status becomes {@code COMPLETED}. Terminal states must have
+     * no outgoing transitions; {@link StateMachineBuilder#build()} enforces this.
+     */
     public StateBuilder<C> terminal() {
         this.terminal = true;
         return this;
     }
 
+    /**
+     * Register this state with the parent builder and return to it.
+     * Must be called to close the state definition — otherwise the state is silently dropped.
+     */
     public StateMachineBuilder<C> and() {
         parent.registerState(this);
         return parent;

@@ -10,7 +10,7 @@ package hypercell.opensource.stateful.fsm.core;
  * SYNC VS ASYNC:
  * This is the synchronous version. The library executes this on the calling thread,
  * blocking until it returns. When async support is added later, a separate
- * AsyncAction<C> interface will be introduced — this interface stays unchanged.
+ * {@code AsyncAction<C>} interface will be introduced — this interface stays unchanged.
  * <p>
  * ERROR HANDLING:
  * Actions should never swallow exceptions silently. Either:

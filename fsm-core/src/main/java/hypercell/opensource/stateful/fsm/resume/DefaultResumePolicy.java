@@ -7,6 +7,18 @@ import hypercell.opensource.stateful.fsm.execution.ExecutionRecord;
 
 import java.util.Optional;
 
+/**
+ * Default {@link ResumePolicy} implementation.
+ * <p>
+ * Skips a sub-step if and only if it has a recorded success entry in the
+ * {@code ExecutionRecord} (which is pre-populated from the snapshot's completed
+ * sub-step results before {@code proceed()} runs). This is the correct behaviour
+ * for the common case: don't repeat work that already succeeded.
+ * <p>
+ * Singleton via {@link #getInstance()} — stateless, safe to share.
+ *
+ * @param <C> the context type flowing through the machine
+ */
 public class DefaultResumePolicy<C> implements ResumePolicy<C> {
     private static final DefaultResumePolicy<?> INSTANCE = new DefaultResumePolicy<>();
 

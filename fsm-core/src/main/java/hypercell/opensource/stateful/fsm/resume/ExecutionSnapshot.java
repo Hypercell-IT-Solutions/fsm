@@ -91,6 +91,11 @@ public class ExecutionSnapshot {
                 .build();
     }
 
+    /**
+     * Create a {@code RUNNING} checkpoint snapshot from a live execution record.
+     * Used internally to save progress after a successful transition so the machine
+     * can be reconstituted if the process restarts.
+     */
     public static ExecutionSnapshot checkpoint(ExecutionRecord executionRecord, String machineDefinitionId) {
         Map<String, ActionResult> completed = executionRecord.getSteps().stream()
                 .filter(s -> s.getResult().isSuccess())
@@ -111,87 +116,128 @@ public class ExecutionSnapshot {
                 .build();
     }
 
+    /** Return a copy of this snapshot with the attempt number incremented to {@code newAttempt}. */
     public ExecutionSnapshot withAttemptNumber(int newAttempt) {
         return new Builder(this).attemptNumber(newAttempt).build();
     }
 
+    /** Return a copy of this snapshot with a different {@link SnapshotStatus}. */
     public ExecutionSnapshot withStatus(SnapshotStatus newStatus) {
         return new Builder(this).status(newStatus).build();
     }
 
+    /**
+     * Return a copy of this snapshot with {@code scheduledRetryAt} set and
+     * status automatically changed to {@code RETRY_SCHEDULED}.
+     */
     public ExecutionSnapshot withScheduledRetryAt(Instant retryAt) {
         return new Builder(this).scheduledRetryAt(retryAt)
                 .status(SnapshotStatus.RETRY_SCHEDULED).build();
     }
 
+    /** Return a copy of this snapshot with a different machine definition ID. */
     public ExecutionSnapshot withMachineDefinitionId(String id) {
         return new Builder(this).machineDefinitionId(id).build();
     }
 
+    /** {@code true} when status is {@code RUNNING} (a retry is currently executing). */
     public boolean isRunning() {
         return status == SnapshotStatus.RUNNING;
     }
 
+    /** {@code true} when status is {@code FAILED} (waiting for manual or scheduled retry). */
     public boolean isFailed() {
         return status == SnapshotStatus.FAILED;
     }
 
+    /** {@code true} when status is {@code COMPLETED} (snapshot should have been deleted). */
     public boolean isCompleted() {
         return status == SnapshotStatus.COMPLETED;
     }
 
+    /** The business entity ID; used as the repository storage key. */
     public String getExecutionId() {
         return executionId;
     }
 
+    /** The {@link hypercell.opensource.stateful.fsm.core.StateMachineDefinition#id()} this snapshot belongs to. */
     public String getMachineDefinitionId() {
         return machineDefinitionId;
     }
 
+    /** The state the machine is positioned in (where resumption should start). */
     public String getCurrentStateName() {
         return currentStateName;
     }
 
+    /** The state containing the failed sub-step; {@code null} for {@code RUNNING} checkpoints. */
     public String getFailedStateName() {
         return failedStateName;
     }
 
+    /** The sub-step that failed; {@code null} for {@code RUNNING} checkpoints. */
     public String getFailedSubStepName() {
         return failedSubStepName;
     }
 
+    /** The event that was being processed when this snapshot was taken; may be {@code null}. */
     public String getLastTriggerEvent() {
         return lastTriggerEvent;
     }
 
+    /**
+     * Completed sub-step results, keyed as {@code "stateName::subStepName"}.
+     * These are the steps that will be skipped on resume. Unmodifiable.
+     */
     public Map<String, ActionResult> getCompletedSubStepResults() {
         return completedSubStepResults;
     }
 
+    /**
+     * How many execution attempts have occurred so far (starts at 1 on first failure,
+     * increments with each retry failure). Passed to {@link hypercell.opensource.stateful.fsm.retry.RetryPolicy#shouldRetry}.
+     */
     public int getAttemptNumber() {
         return attemptNumber;
     }
 
+    /** When the most recent failure occurred; may be {@code null} for {@code RUNNING} checkpoints. */
     public Instant getLastFailedAt() {
         return lastFailedAt;
     }
 
+    /**
+     * When the next auto-retry is scheduled to fire; non-null only when status is
+     * {@code RETRY_SCHEDULED}. Used by {@code recoverPendingRetries()} to calculate
+     * the remaining delay after a process restart.
+     */
     public Instant getScheduledRetryAt() {
         return scheduledRetryAt;
     }
 
+    /** The error message from the most recent failure; {@code null} for {@code RUNNING} checkpoints. */
     public String getLastErrorMessage() {
         return lastErrorMessage;
     }
 
+    /** The current persistence status of this snapshot. */
     public SnapshotStatus getStatus() {
         return status;
     }
 
+    /** When this snapshot object was created (wall-clock time). */
     public Instant getCapturedAt() {
         return capturedAt;
     }
 
+    /**
+     * Mutate the status in place.
+     * <p>
+     * <strong>For internal use only.</strong> Prefer the immutable
+     * {@link #withStatus(SnapshotStatus)} copy-with method in all other contexts.
+     * This mutating setter exists for the rare case where the repository needs to
+     * update status on an already-loaded instance without creating a new object.
+     */
     public void setStatus(SnapshotStatus status) {
         this.status = status;
     }
@@ -204,6 +250,11 @@ public class ExecutionSnapshot {
         return completedSubStepResults.containsKey(stateName + "::" + subStepName);
     }
 
+    /**
+     * Builder for {@link ExecutionSnapshot}. Used internally by the library and by
+     * custom {@link SnapshotRepository} implementations that need to reconstruct
+     * a snapshot from a raw storage format (e.g. database row, Redis hash).
+     */
     public static class Builder {
         String executionId = "";
         String machineDefinitionId = "";

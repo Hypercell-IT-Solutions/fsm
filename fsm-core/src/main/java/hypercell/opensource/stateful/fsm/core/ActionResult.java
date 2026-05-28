@@ -94,26 +94,36 @@ public final class ActionResult {
         return status;
     }
 
+    /** Key-value data produced by the action; empty map if the action produced no output. */
     public Map<String, Object> getOutput() {
         return output;
     }
 
+    /** Human-readable error description; {@code null} unless status is {@code FAILED}. */
     public String getErrorMessage() {
         return errorMessage;
     }
 
+    /**
+     * Fully-qualified class name of the original exception; {@code null} if the failure
+     * was not created from a {@code Throwable} (e.g. {@link #failed(String)}).
+     * Useful for retry policy decisions: retry only on {@code TimeoutException}, etc.
+     */
     public String getErrorType() {
         return errorType;
     }
 
+    /** {@code true} when status is {@code SUCCESS}. */
     public boolean isSuccess() {
         return status == Status.SUCCESS;
     }
 
+    /** {@code true} when status is {@code FAILED}. */
     public boolean isFailed() {
         return status == Status.FAILED;
     }
 
+    /** {@code true} when status is {@code SKIPPED} (set internally by the library on resume). */
     public boolean isSkipped() {
         return status == Status.SKIPPED;
     }

@@ -39,18 +39,21 @@ import java.util.function.Function;
  * optimistic locking (e.g. database compare-and-swap, Redis SET NX).
  * <p>
  * SPRING BOOT USAGE:
- *
- * @param <C> the context type flowing through the machine
- * @Bean public StateMachineManager<OrderContext> orderMachineManager(
- * StateMachineDefinition<OrderContext> definition,
- * SnapshotRepository repository,
- * OrderService orderService) {
- * return definition.newManager(repository, id -> orderService.loadContext(id));
+ * <pre>{@code
+ * @Bean
+ * public StateMachineManager<OrderContext> orderMachineManager(
+ *         StateMachineDefinition<OrderContext> definition,
+ *         SnapshotRepository repository,
+ *         OrderService orderService) {
+ *     return definition.newManager(repository, id -> orderService.loadContext(id));
  * }
- * <p>
+ *
  * // In your controller:
  * ManagedTransitionResult<OrderContext> result =
- * manager.trigger(orderId, request.getEvent());
+ *     manager.trigger(orderId, request.getEvent());
+ * }</pre>
+ *
+ * @param <C> the context type flowing through the machine
  */
 public interface StateMachineManager<C> {
 

@@ -137,6 +137,11 @@ public class RetryCoordinator<C> {
         return executeRetry(executionId);
     }
 
+    /**
+     * The configured retry policy. Exposed for {@code StateMachineManager.recoverPendingRetries()},
+     * which calls {@code shouldRetry(attemptNumber, null)} to decide whether each
+     * pending snapshot should be re-scheduled on startup.
+     */
     public RetryPolicy getRetryPolicy() {
         return retryPolicy;
     }

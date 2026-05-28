@@ -121,6 +121,7 @@ public final class StateMachine {
         return LoggingEventListener.withPrefix(prefix);
     }
 
+    /** Structured logging listener with the default {@code [FSM]} prefix. */
     public static <C> MachineEventListener<C> loggingListener() {
         return LoggingEventListener.create();
     }

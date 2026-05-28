@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  * The runtime engine of the state machine library.
  * <p>
  * WHAT CHANGED WITH EVENTS:
- * This class now holds an EventBus<C> and emits events at every meaningful
+ * This class now holds an {@code EventBus<C>} and emits events at every meaningful
  * lifecycle point. The EventBus is always non-null (it's either a real bus
  * with listeners or an empty no-op bus) — no null checks needed here.
  * <p>

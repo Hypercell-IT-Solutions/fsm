@@ -10,11 +10,11 @@ import java.time.format.DateTimeFormatter;
  * A ready-to-use listener that prints a structured, human-readable execution log.
  * <p>
  * Useful during development and debugging. Wire it in via the builder:
- * <p>
+ * <pre>{@code
  * StateMachine.<Ctx>define("my-machine")
- * .listener(LoggingEventListener.withPrefix("[ORDER]"))
- * ...
- * <p>
+ *     .listener(LoggingEventListener.withPrefix("[ORDER]"))
+ *     ...
+ * }</pre>
  * Example output:
  * [ORDER] 10:42:01 | ENTERED    | PROCESSING
  * [ORDER] 10:42:01 | STEP  ✓   | PROCESSING / charge-payment

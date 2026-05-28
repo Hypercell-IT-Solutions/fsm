@@ -28,27 +28,31 @@ import hypercell.opensource.stateful.fsm.resume.ExecutionSnapshot;
 public interface StateMachineInstance<C> {
 
     /**
-     * Unique identifier for this execution. Used as the snapshot key.
+     * Unique identifier for this execution. Used as the snapshot storage key.
+     * Either a generated UUID or the value passed to {@code newInstance(context, executionId)}.
      */
     String executionId();
 
     /**
-     * The state the machine is currently in.
+     * The state the machine is currently positioned in.
+     * Never {@code null}; starts at the initial state.
      */
     StateDefinition<C> currentState();
 
     /**
-     * The current lifecycle status of this instance.
+     * The current lifecycle status: {@code RUNNING}, {@code COMPLETED}, or {@code FAILED}.
      */
     ExecutionStatus status();
 
     /**
-     * The full live execution record — all steps taken so far.
+     * The full live execution record — all steps taken so far, including skipped ones.
+     * Primarily used internally; exposed for monitoring and debugging.
      */
     ExecutionRecord executionRecord();
 
     /**
-     * The context object being passed through the machine.
+     * The mutable context object being passed through every guard, action, and sub-step.
+     * Actions and sub-steps may modify this object.
      */
     C context();
 
@@ -100,9 +104,12 @@ public interface StateMachineInstance<C> {
 
     ExecutionSnapshot takeCheckpoint();
 
+    /** {@code true} when status is {@code COMPLETED}. */
     boolean isCompleted();
 
+    /** {@code true} when status is {@code FAILED}. */
     boolean isFailed();
 
+    /** {@code true} when status is {@code RUNNING}. */
     boolean isRunning();
 }

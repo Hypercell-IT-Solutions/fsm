@@ -33,6 +33,11 @@ import java.util.*;
  * Each save/load/delete is an atomic file operation. Fine for single-JVM use.
  * For multi-instance deployments, use a centralized store (DB, Redis) instead.
  * <p>
+ * KNOWN LIMITATION: {@link #listPendingRetries()} currently only returns snapshots with
+ * status {@code FAILED}. Snapshots with status {@code RETRY_SCHEDULED} are not included,
+ * so {@code StateMachineManager.recoverPendingRetries()} will not recover previously
+ * scheduled (but not yet fired) retries after a process restart.
+ * <p>
  * USAGE:
  * SnapshotRepository repo = new FileSnapshotRepository(Path.of("/var/fsm/snapshots"));
  */
@@ -239,6 +244,13 @@ public class FileSnapshotRepository implements SnapshotRepository {
         }
     }
 
+    /**
+     * Property key constants that define the serialization schema for {@code .snapshot} files.
+     * Exposed as {@code static final} strings so that alternative implementations
+     * (e.g. a JDBC-backed repository reading the same file format) can reference
+     * the field names without duplicating magic strings.
+     * Treat these values as stable — changing them breaks existing snapshot files.
+     */
     static final class SnapshotFields {
         private SnapshotFields() {
         }

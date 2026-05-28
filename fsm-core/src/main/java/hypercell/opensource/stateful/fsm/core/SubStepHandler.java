@@ -33,7 +33,7 @@ public interface SubStepHandler<C> {
     ActionResult execute(C context) throws Exception;
 
     /**
-     * Adapts this handler to the Action<C> interface when needed.
+     * Adapts this handler to the {@link Action} interface when needed.
      */
     default Action<C> asAction() {
         return this::execute;

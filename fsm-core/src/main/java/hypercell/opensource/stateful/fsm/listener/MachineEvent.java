@@ -13,11 +13,13 @@ import java.time.Instant;
  * with instanceof and get strongly-typed data without casting Maps.
  * <p>
  * USAGE IN A LISTENER:
+ * <pre>{@code
  * public void onEvent(MachineEvent<?> event) {
- * if (event instanceof SubStepFailedEvent<?> e) {
- * alertOps(e.getSubStepName(), e.getErrorMessage());
+ *     if (event instanceof SubStepFailedEvent<?> e) {
+ *         alertOps(e.getSubStepName(), e.getErrorMessage());
+ *     }
  * }
- * }
+ * }</pre>
  *
  * @param <C> the context type of the machine that emitted this event
  */

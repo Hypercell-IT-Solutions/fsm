@@ -6,20 +6,22 @@ package hypercell.opensource.stateful.fsm.listener;
  * DESIGN: TWO WAYS TO LISTEN
  * <p>
  * Option 1 — handle all events in one method (good for generic logging):
+ * <pre>{@code
  * machine.addListener(event -> log(event));
- * <p>
+ * }</pre>
  * Option 2 — override only the events you care about (good for specific reactions):
- * machine.addListener(new MachineEventListener<>() {
- *
- * @param <C> the context type of the machine being observed
- * @Override public void onSubStepFailed(MachineEvent.SubStepFailedEvent<C> e) {
- * alertOps("Payment step failed: " + e.getErrorMessage());
- * }
- * @Override public void onMachineCompleted(MachineEvent.MachineCompletedEvent<C> e) {
- * metrics.increment("orders.completed");
- * }
+ * <pre>{@code
+ * machine.addListener(new MachineEventListener<OrderContext>() {
+ *     @Override
+ *     public void onSubStepFailed(MachineEvent.SubStepFailedEvent<OrderContext> e) {
+ *         alertOps("Payment step failed: " + e.getErrorMessage());
+ *     }
+ *     @Override
+ *     public void onMachineCompleted(MachineEvent.MachineCompletedEvent<OrderContext> e) {
+ *         metrics.increment("orders.completed");
+ *     }
  * });
- * <p>
+ * }</pre>
  * THREADING:
  * Listeners are called synchronously on the same thread as the machine execution.
  * Keep listeners fast — don't block inside them. If you need to do heavy work
@@ -28,6 +30,8 @@ package hypercell.opensource.stateful.fsm.listener;
  * EXCEPTION HANDLING:
  * Exceptions thrown by a listener are caught and logged but do NOT propagate —
  * a bad listener should not kill the machine execution.
+ *
+ * @param <C> the context type of the machine being observed
  */
 public interface MachineEventListener<C> {
 
@@ -47,30 +51,55 @@ public interface MachineEventListener<C> {
         else if (event instanceof MachineEvent.MachineResumedEvent<C> e) onMachineResumed(e);
     }
 
+    /** Fired when a transition successfully moves the machine from one state to another. */
     default void onTransitionFired(MachineEvent.TransitionFiredEvent<C> event) {
     }
 
+    /** Fired after the machine enters a state and its {@code onEntry} hook completes. */
     default void onStateEntered(MachineEvent.StateEnteredEvent<C> event) {
     }
 
+    /** Fired after the machine's {@code onExit} hook completes (before it moves). */
     default void onStateExited(MachineEvent.StateExitedEvent<C> event) {
     }
 
+    /** Fired when a sub-step executes and returns {@code SUCCESS}. */
     default void onSubStepCompleted(MachineEvent.SubStepCompletedEvent<C> event) {
     }
 
+    /**
+     * Fired when a sub-step is skipped during a resume because it was already
+     * recorded as completed in a previous run. Never fired on fresh executions.
+     */
     default void onSubStepSkipped(MachineEvent.SubStepSkippedEvent<C> event) {
     }
 
+    /**
+     * Fired when a sub-step returns {@code FAILED} or throws.
+     * The machine enters {@code FAILED} status immediately after this event.
+     * Use this for alerting, dashboards, and audit trails.
+     */
     default void onSubStepFailed(MachineEvent.SubStepFailedEvent<C> event) {
     }
 
+    /**
+     * Fired when the machine reaches a terminal state and all sub-steps complete.
+     * This is the happy-path completion event.
+     */
     default void onMachineCompleted(MachineEvent.MachineCompletedEvent<C> event) {
     }
 
+    /**
+     * Fired when the machine enters {@code FAILED} status — after the snapshot is
+     * saved and before {@code SubStepExecutionException} is thrown to the caller.
+     */
     default void onMachineFailed(MachineEvent.MachineFailedEvent<C> event) {
     }
 
+    /**
+     * Fired at the start of a resume ({@code proceed()}) before any sub-steps run.
+     * Carries the state and sub-step name the resume will re-run from.
+     */
     default void onMachineResumed(MachineEvent.MachineResumedEvent<C> event) {
     }
 }

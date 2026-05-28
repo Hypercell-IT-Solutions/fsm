@@ -27,14 +27,14 @@ import java.util.function.Function;
  * Default implementation of StateMachineManager.
  * <p>
  * CONCURRENCY MODEL:
- * A ConcurrentHashMap<executionId, ReentrantLock> provides per-execution in-process
- * locking. ReentrantLock.tryLock() returns immediately (non-blocking): if the lock
- * is held by another thread, ConcurrentExecutionException is thrown rather than
+ * A {@code ConcurrentHashMap<executionId, ReentrantLock>} provides per-execution in-process
+ * locking. {@code ReentrantLock.tryLock()} returns immediately (non-blocking): if the lock
+ * is held by another thread, {@code ConcurrentExecutionException} is thrown rather than
  * blocking the caller. This maps naturally to HTTP: return 409 Conflict immediately
  * rather than making the client wait.
  * <p>
  * Lock entries are cleaned up after each call to avoid unbounded map growth. Entries
- * are only removed when no thread is waiting — checked via ReentrantLock.hasQueuedThreads().
+ * are only removed when no thread is waiting — checked via {@code ReentrantLock.hasQueuedThreads()}.
  * <p>
  * AUTO-PROCEED BEHAVIOR:
  * When a FAILED snapshot is found and a new event arrives, the manager calls proceed()

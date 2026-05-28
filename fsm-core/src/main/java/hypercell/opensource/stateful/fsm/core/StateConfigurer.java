@@ -14,8 +14,8 @@ import hypercell.opensource.stateful.fsm.builder.StateBuilder;
  * stateName() — the implementation just adds sub-steps, hooks, and transitions.
  * <p>
  * SPRING BOOT USAGE:
- * Mark the implementation @Component. Inject your services. The machine
- * definition bean can then @Autowire a list of StateConfigurer<C> and
+ * Mark the implementation {@code @Component}. Inject your services. The machine
+ * definition bean can then {@code @Autowire} a list of {@code StateConfigurer<C>} and
  * register them all in a loop — the machine assembles itself from parts.
  *
  * @param <C> the context type flowing through the machine
