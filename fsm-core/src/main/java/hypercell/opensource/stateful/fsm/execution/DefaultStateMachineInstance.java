@@ -48,7 +48,17 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
                                        SnapshotRepository snapshotRepository,
                                        RetryCoordinator<C> retryCoordinator,
                                        EventBus<C> eventBus) {
-        this.executionId = UUID.randomUUID().toString();
+        this(definition, initialState, context, UUID.randomUUID().toString(), snapshotRepository, retryCoordinator, eventBus);
+    }
+
+    public DefaultStateMachineInstance(StateMachineDefinition<C> definition,
+                                       StateDefinition<C> initialState,
+                                       C context,
+                                       String executionId,
+                                       SnapshotRepository snapshotRepository,
+                                       RetryCoordinator<C> retryCoordinator,
+                                       EventBus<C> eventBus) {
+        this.executionId = executionId;
         this.definition = definition;
         this.currentState = initialState;
         this.context = context;

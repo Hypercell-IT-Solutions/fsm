@@ -31,6 +31,8 @@ public interface StateMachineDefinition<C> {
 
     StateMachineInstance<C> newInstance(C context);
 
+    StateMachineInstance<C> newInstance(C context, String executionId);
+
     StateMachineInstance<C> resume(C context, ExecutionSnapshot snapshot,
                                    SnapshotRepository repository);
 }

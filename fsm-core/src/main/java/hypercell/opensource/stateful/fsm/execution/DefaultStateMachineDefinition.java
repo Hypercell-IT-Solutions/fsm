@@ -87,6 +87,12 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
     }
 
     @Override
+    public StateMachineInstance<C> newInstance(C context, String executionId) {
+        return new DefaultStateMachineInstance<>(this, initialState, context, executionId,
+                snapshotRepository, retryCoordinator, eventBus);
+    }
+
+    @Override
     public StateMachineInstance<C> resume(C context, ExecutionSnapshot snapshot,
                                           SnapshotRepository repository) {
         StateDefinition<C> failedState = stateByName(snapshot.getFailedStateName());
