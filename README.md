@@ -93,4 +93,4 @@ fsm-library/
 
 ## License
 
-Apache 2.0
+Copyright 2026 Ahmed Mehanna. Licensed under the [Apache License, Version 2.0](LICENSE).
