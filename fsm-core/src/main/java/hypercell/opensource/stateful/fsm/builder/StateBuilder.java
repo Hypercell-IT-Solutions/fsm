@@ -3,6 +3,7 @@ package hypercell.opensource.stateful.fsm.builder;
 import hypercell.opensource.stateful.fsm.core.Action;
 import hypercell.opensource.stateful.fsm.core.StateHook;
 import hypercell.opensource.stateful.fsm.core.SubStepDefinition;
+import hypercell.opensource.stateful.fsm.core.SubStepHandler;
 import hypercell.opensource.stateful.fsm.exception.StateMachineConfigurationException;
 
 import java.util.ArrayList;
@@ -54,6 +55,14 @@ public class StateBuilder<C> {
             }
         };
         return this;
+    }
+
+    /**
+     * Register a sub-step from a handler class.
+     * Equivalent to: .subStep(handler.name(), handler::execute)
+     */
+    public StateBuilder<C> subStep(SubStepHandler<C> handler) {
+        return subStep(handler.name(), handler::execute);
     }
 
     public StateBuilder<C> subStep(String name, Action<C> action) {

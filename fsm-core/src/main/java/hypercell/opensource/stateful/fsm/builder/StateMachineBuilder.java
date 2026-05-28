@@ -93,6 +93,18 @@ public class StateMachineBuilder<C> {
         return this;
     }
 
+    /**
+     * Register a state from a configurer class.
+     * The configurer's stateName() becomes the builder key.
+     * The configurer's configure() call adds sub-steps, hooks, and transitions.
+     */
+    public StateMachineBuilder<C> state(StateConfigurer<C> configurer) {
+        StateBuilder<C> stateBuilder = new StateBuilder<>(this, configurer.stateName());
+        configurer.configure(stateBuilder);
+        registerState(stateBuilder);
+        return this;
+    }
+
     public StateBuilder<C> state(String name) {
         if (name.contains("::")) throw new StateMachineConfigurationException(
                 "State name '" + name + "' contains reserved separator '::'.");
