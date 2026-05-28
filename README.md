@@ -68,6 +68,7 @@ instance.trigger("COMPLETE");    // PROCESSING → SHIPPED (terminal, status = C
 | [Threading & safety](docs/04-threading-and-safety.md) | Thread-safety contracts for every class |
 | [Persistence & retry](docs/05-persistence-and-retry.md) | Snapshots, SnapshotStatus, retry policies, startup recovery |
 | [API reference](docs/06-api-reference.md) | Full reference for all public types |
+| [Limitations & roadmap](docs/07-limitations.md) | Known bugs, gaps, and future improvement ideas |
 
 ---
 
