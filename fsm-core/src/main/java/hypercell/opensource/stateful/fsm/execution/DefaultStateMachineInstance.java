@@ -37,6 +37,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
     private final SnapshotRepository snapshotRepository;
     private final RetryCoordinator<C> retryCoordinator;
     private final EventBus<C> eventBus;
+    private final int attemptNumber;
     private final C context;
 
     private StateDefinition<C> currentState;
@@ -67,6 +68,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
         this.eventBus = eventBus != null ? eventBus : EventBus.empty();
         this.executionStatus = ExecutionStatus.RUNNING;
         this.executionRecord = new ExecutionRecord(executionId, initialState.name());
+        this.attemptNumber = 1;
 
         this.subStepRunner = new SubStepRunner<>(
                 definition.resumePolicy(), this.eventBus, executionId, definition.id());
@@ -95,6 +97,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
     DefaultStateMachineInstance(StateMachineDefinition<C> definition,
                                 StateDefinition<C> failedState,
                                 C context,
+                                int attemptNumber,
                                 ExecutionRecord hydratedRecord,
                                 ExecutionStatus initialStatus,
                                 SnapshotRepository snapshotRepository,
@@ -109,6 +112,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
         this.retryCoordinator = retryCoordinator;
         this.eventBus = eventBus != null ? eventBus : EventBus.empty();
         this.executionStatus = initialStatus;
+        this.attemptNumber = attemptNumber;
 
         this.subStepRunner = new SubStepRunner<>(
                 definition.resumePolicy(), this.eventBus, executionId, definition.id());
@@ -216,7 +220,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
 
     @Override
     public ExecutionSnapshot takeSnapshot(String pendingEvent) {
-        return ExecutionSnapshot.fromRecord(executionRecord, pendingEvent, definition.id(),
+        return ExecutionSnapshot.fromRecord(executionRecord, pendingEvent, definition.id(), attemptNumber,
                 executionRecord.getSteps().stream()
                         .filter(s -> s.getResult().isSuccess())
                         .collect(Collectors.toMap(

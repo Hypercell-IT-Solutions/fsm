@@ -1,5 +1,6 @@
 package hypercell.opensource.stateful.fsm.resume;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,6 +21,13 @@ public class InMemorySnapshotRepository implements SnapshotRepository {
     @Override
     public void delete(String id) {
         store.remove(id);
+    }
+
+    @Override
+    public List<ExecutionSnapshot> listPendingRetries() {
+        return store.values().stream()
+                .filter(ExecutionSnapshot::isFailed)
+                .toList();
     }
 
     public int size() {

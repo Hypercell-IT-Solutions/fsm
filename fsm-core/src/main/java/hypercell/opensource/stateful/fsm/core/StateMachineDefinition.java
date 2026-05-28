@@ -4,6 +4,7 @@ import hypercell.opensource.stateful.fsm.manager.StateMachineManager;
 import hypercell.opensource.stateful.fsm.resume.ExecutionSnapshot;
 import hypercell.opensource.stateful.fsm.resume.ResumePolicy;
 import hypercell.opensource.stateful.fsm.resume.SnapshotRepository;
+import hypercell.opensource.stateful.fsm.retry.RetryCoordinator;
 
 import java.util.List;
 import java.util.function.Function;
@@ -32,6 +33,8 @@ public interface StateMachineDefinition<C> {
      * the concrete definition class.
      */
     ResumePolicy<C> resumePolicy();
+
+    RetryCoordinator<C> retryCoordinator();
 
     StateMachineInstance<C> newInstance(C context);
 

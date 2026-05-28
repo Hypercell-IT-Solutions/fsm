@@ -85,6 +85,16 @@ public class FileSnapshotRepository implements SnapshotRepository {
         }
     }
 
+    @Override
+    public List<ExecutionSnapshot> listPendingRetries() {
+        return listExecutionIds().stream()
+                .map(this::load)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .filter(ExecutionSnapshot::isFailed)
+                .toList();
+    }
+
     /**
      * Serialize an ExecutionSnapshot to a flat Properties map.
      * <p>

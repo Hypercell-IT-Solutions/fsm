@@ -8,9 +8,18 @@ import hypercell.opensource.stateful.fsm.exception.ConcurrentExecutionException;
 import hypercell.opensource.stateful.fsm.exception.SubStepExecutionException;
 import hypercell.opensource.stateful.fsm.resume.ExecutionSnapshot;
 import hypercell.opensource.stateful.fsm.resume.SnapshotRepository;
+import hypercell.opensource.stateful.fsm.resume.SnapshotStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
@@ -36,11 +45,13 @@ import java.util.function.Function;
  * @param <C> the context type flowing through the machine
  */
 public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
+    private static final Logger log = LoggerFactory.getLogger(DefaultStateMachineManager.class);
 
     private final StateMachineDefinition<C> definition;
     private final SnapshotRepository repository;
     private final Function<String, C> contextLoader;
     private final ConcurrentHashMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService recoveryExecutor;
 
     DefaultStateMachineManager(StateMachineDefinition<C> definition,
                                SnapshotRepository repository,
@@ -48,6 +59,11 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
         this.definition = definition;
         this.repository = repository;
         this.contextLoader = contextLoader;
+        this.recoveryExecutor = Executors.newScheduledThreadPool(1, r -> {
+            Thread t = new Thread(r, "fsm-recovery");
+            t.setDaemon(true);
+            return t;
+        });
     }
 
     @Override
@@ -83,6 +99,38 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
     @Override
     public Optional<ExecutionSnapshot> snapshotOf(String executionId) {
         return repository.load(executionId);
+    }
+
+    @Override
+    public void recoverPendingRetries() {
+        List<ExecutionSnapshot> pending = repository.listPendingRetries();
+
+        for (ExecutionSnapshot snapshot : pending) {
+            boolean shouldRecover = (snapshot.getStatus() == SnapshotStatus.RETRY_SCHEDULED || snapshot.getStatus() == SnapshotStatus.FAILED)
+                    && definition.retryCoordinator().getRetryPolicy().shouldRetry(snapshot.getAttemptNumber(), null);
+
+            if (!shouldRecover) continue;
+
+            Duration delay = Duration.ZERO;
+            if (snapshot.getScheduledRetryAt() != null) {
+                Duration remaining = Duration.between(
+                        Instant.now(), snapshot.getScheduledRetryAt());
+                if (!remaining.isNegative()) {
+                    delay = remaining;
+                }
+            }
+
+            String executionId = snapshot.getExecutionId();
+            long delayMs = delay.toMillis();
+
+            recoveryExecutor.schedule(() -> {
+                try {
+                    proceed(executionId);
+                } catch (Exception e) {
+                    log.warn("Recovery retry failed for '{}': {}", executionId, e.getMessage());
+                }
+            }, delayMs, TimeUnit.MILLISECONDS);
+        }
     }
 
     private ManagedTransitionResult<C> doTrigger(String executionId, String event,

@@ -211,6 +211,11 @@ public class StateMachineBuilder<C> {
         }
 
         @Override
+        public RetryCoordinator<C> retryCoordinator() {
+            return d.retryCoordinator();
+        }
+
+        @Override
         public StateMachineInstance<C> newInstance(C c) {
             return d.newInstance(c);
         }

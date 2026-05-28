@@ -1,5 +1,6 @@
 package hypercell.opensource.stateful.fsm.resume;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -13,4 +14,14 @@ public interface SnapshotRepository {
     Optional<ExecutionSnapshot> load(String executionId);
 
     void delete(String executionId);
+
+    /**
+     * Returns all snapshots with status FAILED or RETRY_SCHEDULED.
+     * Called on startup by StateMachineManager.recoverPendingRetries()
+     * to re-schedule retries that were in flight when the process stopped.
+     * <p>
+     * Implementations backed by a database should query by status column.
+     * The InMemory implementation scans the in-memory map.
+     */
+    List<ExecutionSnapshot> listPendingRetries();
 }

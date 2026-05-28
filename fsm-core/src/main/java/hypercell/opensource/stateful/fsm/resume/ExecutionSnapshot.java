@@ -73,6 +73,7 @@ public class ExecutionSnapshot {
             ExecutionRecord executionRecord,
             String pendingEvent,
             String machineDefinitionId,
+            int attemptNumber,
             Map<String, ActionResult> completedSubStepResults) {
         return new Builder()
                 .executionId(executionRecord.getExecutionId())
@@ -82,7 +83,7 @@ public class ExecutionSnapshot {
                 .failedSubStepName(executionRecord.getFailedSubStepName())
                 .lastTriggerEvent(pendingEvent)
                 .completedSubStepResults(completedSubStepResults)
-                .attemptNumber(1)
+                .attemptNumber(attemptNumber)
                 .lastFailedAt(Instant.now())
                 .lastErrorMessage(null)
                 .status(SnapshotStatus.FAILED)

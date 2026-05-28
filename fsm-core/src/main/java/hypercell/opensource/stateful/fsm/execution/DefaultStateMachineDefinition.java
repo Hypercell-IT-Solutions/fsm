@@ -74,6 +74,11 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
     }
 
     @Override
+    public RetryCoordinator<C> retryCoordinator() {
+        return retryCoordinator;
+    }
+
+    @Override
     public StateDefinition<C> stateByName(String name) {
         StateDefinition<C> s = states.get(name);
         if (s == null) throw new InvalidStateException(name);
@@ -127,8 +132,8 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
             repository.save(snapshot.getExecutionId(), snapshot.withStatus(SnapshotStatus.RUNNING));
         }
 
-        return new DefaultStateMachineInstance<>(this, currentState, context, executionRecord,
-                ExecutionStatus.RUNNING, repository, retryCoordinator, eventBus);
+        return new DefaultStateMachineInstance<>(this, currentState, context, snapshot.getAttemptNumber(),
+                executionRecord, ExecutionStatus.RUNNING, repository, retryCoordinator, eventBus);
     }
 
     @Override
@@ -147,9 +152,9 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
         }
 
         return new DefaultStateMachineInstance<>(
-                this, failedState, context, hydratedRecord, ExecutionStatus.FAILED,
-                repository != null ? repository : snapshotRepository,
-                retryCoordinator, eventBus);
+                this, failedState, context, snapshot.getAttemptNumber(), hydratedRecord,
+                ExecutionStatus.FAILED, repository != null ? repository : snapshotRepository, retryCoordinator,
+                eventBus);
     }
 
     private ExecutionRecord hydrateRecord(ExecutionSnapshot snapshot) {

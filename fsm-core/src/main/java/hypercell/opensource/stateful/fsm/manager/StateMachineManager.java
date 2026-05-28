@@ -92,6 +92,17 @@ public interface StateMachineManager<C> {
     Optional<ExecutionSnapshot> snapshotOf(String executionId);
 
     /**
+     * Re-schedules retries for all FAILED/RETRY_SCHEDULED executions found
+     * in the repository. Call this once on application startup.
+     * <p>
+     * For RETRY_SCHEDULED snapshots: re-schedules using the remaining delay
+     * (or immediately if the scheduled time has already passed).
+     * For FAILED snapshots awaiting manual retry: skips them — the developer
+     * decided not to auto-retry these, that decision should be respected.
+     */
+    void recoverPendingRetries();
+
+    /**
      * The only way to create a StateMachineManager.
      * Keeps DefaultStateMachineManager invisible to consumers.
      */

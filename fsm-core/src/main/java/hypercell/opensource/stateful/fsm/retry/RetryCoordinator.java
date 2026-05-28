@@ -137,6 +137,10 @@ public class RetryCoordinator<C> {
         return executeRetry(executionId);
     }
 
+    public RetryPolicy getRetryPolicy() {
+        return retryPolicy;
+    }
+
     /**
      * The actual retry execution — shared by auto and manual paths.
      * Marks the snapshot RUNNING, creates the resumed instance, calls proceed().
