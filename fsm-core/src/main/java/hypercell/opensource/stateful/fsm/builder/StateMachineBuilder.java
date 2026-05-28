@@ -215,6 +215,11 @@ public class StateMachineBuilder<C> {
         }
 
         @Override
+        public StateMachineInstance<C> resume(C context, ExecutionSnapshot snapshot) {
+            return d.resume(context, snapshot);
+        }
+
+        @Override
         public StateMachineInstance<C> resume(C c, ExecutionSnapshot s, SnapshotRepository r) {
             return d.resume(c, s, r);
         }
