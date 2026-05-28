@@ -104,7 +104,7 @@ public class RetryCoordinator<C> {
                 .withScheduledRetryAt(retryAt);
         repository.save(executionId, updated);
 
-        log.info("[RetryCoordinator] Scheduling auto-retry for '{}' in {} ms (attempt {})%n", executionId,
+        log.info("[RetryCoordinator] Scheduling auto-retry for '{}' in {} ms (attempt {})", executionId,
                 delay.toMillis(), nextAttempt);
 
         retryScheduler.schedule(executionId, delay, () -> executeRetry(executionId));
@@ -131,7 +131,7 @@ public class RetryCoordinator<C> {
 
         retryScheduler.cancel(executionId);
 
-        log.info("[RetryCoordinator] Manual retry triggered for '{}' (attempt {})%n", executionId,
+        log.info("[RetryCoordinator] Manual retry triggered for '{}' (attempt {})", executionId,
                 snapshot.getAttemptNumber());
 
         return executeRetry(executionId);
