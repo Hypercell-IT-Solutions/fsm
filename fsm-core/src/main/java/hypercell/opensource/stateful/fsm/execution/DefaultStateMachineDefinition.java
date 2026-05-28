@@ -143,8 +143,7 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
         ExecutionRecord hydratedRecord = hydrateRecord(snapshot);
 
         if (repository != null) {
-            repository.save(snapshot.getExecutionId(),
-                    snapshot.withStatus(hypercell.opensource.stateful.fsm.resume.SnapshotStatus.RUNNING));
+            repository.save(snapshot.getExecutionId(), snapshot.withStatus(SnapshotStatus.RUNNING));
         }
 
         return new DefaultStateMachineInstance<>(
@@ -157,7 +156,7 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
         ExecutionRecord executionRecord = new ExecutionRecord(
                 snapshot.getExecutionId(), snapshot.getFailedStateName());
 
-        for (Map.Entry<String, hypercell.opensource.stateful.fsm.core.ActionResult> entry
+        for (Map.Entry<String, ActionResult> entry
                 : snapshot.getCompletedSubStepResults().entrySet()) {
             String[] parts = entry.getKey().split("::", 2);
             if (parts.length == 2) {
