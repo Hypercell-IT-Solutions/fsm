@@ -234,7 +234,8 @@ public class FileSnapshotRetryExample {
                 System.out.printf("Final: %s → %s  [%s]%n",
                         complete.getFromState(), complete.getToState(), complete.getExecutionStatus());
 
-                System.out.printf("Snapshot cleaned up: %b%n", manager.snapshotOf(orderId).isEmpty());
+                System.out.printf("Snapshot status: %s%n",
+                        manager.snapshotOf(orderId).map(s -> s.getStatus().name()).orElse("absent"));
             }
         }
     }

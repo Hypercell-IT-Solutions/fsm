@@ -204,10 +204,10 @@ When you call `instance.trigger("SOME_EVENT")`:
                → failure: status=FAILED, save snapshot, throw SubStepExecutionException
 10. if targetState.isTerminal():
       status = COMPLETED
-      delete snapshot
+      save snapshot with status COMPLETED
       publish MachineCompletedEvent
     else:
-      save checkpoint
+      save checkpoint (status RUNNING)
 ```
 
 ---

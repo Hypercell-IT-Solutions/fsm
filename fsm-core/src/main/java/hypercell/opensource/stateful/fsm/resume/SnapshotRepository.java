@@ -35,7 +35,12 @@ public interface SnapshotRepository {
 
     /**
      * Delete the snapshot for the given execution.
-     * Called automatically by the library when an execution reaches a terminal state.
+     * <p>
+     * The library no longer calls this automatically — completed executions retain
+     * their snapshot with status {@code COMPLETED} so that subsequent {@code trigger()}
+     * or {@code proceed()} calls correctly throw {@code CompletedMachineException}.
+     * Call this manually when you no longer need the execution record (e.g. after
+     * archiving it, or as part of a scheduled cleanup job).
      */
     void delete(String executionId);
 

@@ -123,13 +123,13 @@ The snapshot has its own status, separate from `ExecutionStatus` (the live insta
                                                     │                    │
                                                     ▼                    ▼
                                                  FAILED             COMPLETED
-                                                                   (snapshot deleted)
+                                                                   (snapshot retained)
 ```
 
 Key rules:
 - **`RETRY_SCHEDULED`** — do not call `manualRetry()` while here; the scheduled retry will fire. If you must cancel it, cancel the retry via the scheduler before calling `manualRetry()`.
 - **`RUNNING`** — a retry is actively executing. `manualRetry()` throws `ConcurrentRetryException`.
-- **`COMPLETED`** — snapshot is deleted; the storage entry is gone.
+- **`COMPLETED`** — execution finished. The snapshot is retained with this status so that subsequent `trigger()` or `proceed()` calls correctly throw `CompletedMachineException`. Call `repository.delete(executionId)` to clean up when you no longer need the record.
 
 ---
 
@@ -308,7 +308,7 @@ public interface RetryScheduler {
       ├── definition.resume(context, snapshot) creates new instance
       └── instance.proceed() runs failed sub-steps (skips completed ones)
               │
-              ├── success: status → COMPLETED, snapshot deleted
+              ├── success: status → COMPLETED, snapshot retained
               └── failure: snapshot saved again (attemptNumber++)
                            back to step 2
 ```

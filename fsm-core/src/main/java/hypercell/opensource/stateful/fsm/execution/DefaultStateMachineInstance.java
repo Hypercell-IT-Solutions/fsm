@@ -8,6 +8,7 @@ import hypercell.opensource.stateful.fsm.listener.EventBus;
 import hypercell.opensource.stateful.fsm.listener.MachineEvent;
 import hypercell.opensource.stateful.fsm.resume.ExecutionSnapshot;
 import hypercell.opensource.stateful.fsm.resume.SnapshotRepository;
+import hypercell.opensource.stateful.fsm.resume.SnapshotStatus;
 import hypercell.opensource.stateful.fsm.retry.RetryCoordinator;
 
 import java.util.UUID;
@@ -244,7 +245,9 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
         if (state.isTerminal()) {
             executionRecord.markCompleted();
             executionStatus = ExecutionStatus.COMPLETED;
-            if (snapshotRepository != null) snapshotRepository.delete(executionId);
+            if (snapshotRepository != null) {
+                snapshotRepository.save(executionId, takeCheckpoint().withStatus(SnapshotStatus.COMPLETED));
+            }
             eventBus.publish(new MachineEvent.MachineCompletedEvent<>(
                     executionId, definition.id(), state.name()));
         }

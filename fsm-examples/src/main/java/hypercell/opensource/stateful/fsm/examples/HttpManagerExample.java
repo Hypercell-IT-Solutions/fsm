@@ -3,6 +3,7 @@ package hypercell.opensource.stateful.fsm.examples;
 import hypercell.opensource.stateful.fsm.StateMachine;
 import hypercell.opensource.stateful.fsm.core.ActionResult;
 import hypercell.opensource.stateful.fsm.core.StateMachineDefinition;
+import hypercell.opensource.stateful.fsm.exception.CompletedMachineException;
 import hypercell.opensource.stateful.fsm.exception.ConcurrentExecutionException;
 import hypercell.opensource.stateful.fsm.exception.InvalidEventException;
 import hypercell.opensource.stateful.fsm.manager.ManagedTransitionResult;
@@ -194,32 +195,12 @@ public class HttpManagerExample {
         });
 
         // --- Request 5: trigger on an already-completed execution ---
-        //
-        // NOTE ON CURRENT BEHAVIOR:
-        // The library deletes the snapshot when an execution completes. After deletion, the
-        // repository has no entry for this executionId, so the manager treats it as a brand-new
-        // execution and starts from the initial state (PENDING). Triggering "COMPLETE" from PENDING
-        // has no valid transition → InvalidEventException.
-        //
-        // CompletedMachineException is only thrown by manager.proceed() when a snapshot
-        // with status COMPLETED is found in the repository — which the built-in repositories
-        // currently never store (they delete on completion). This is a known limitation.
-        //
-        // Workaround: check snapshotOf() before triggering to detect a missing/absent snapshot
-        // as a "completed" signal; or use a custom repository that keeps COMPLETED snapshots.
-        simulateRequest("Request 5: trigger on completed execution (snapshot was deleted)", () -> {
-            boolean snapshotGone = MANAGER.snapshotOf(orderId).isEmpty();
-            System.out.println("  Snapshot present: " + !snapshotGone
-                    + " (deleted when machine completed)");
-
-            // Guard against re-triggering completed executions using snapshotOf()
-            if (snapshotGone) {
-                System.out.println("  HTTP 409 — execution already completed (no snapshot found)");
-                return;
+        simulateRequest("Request 5: trigger on completed execution", () -> {
+            try {
+                MANAGER.trigger(orderId, "COMPLETE");
+            } catch (CompletedMachineException e) {
+                System.out.println("  HTTP 409 — " + e.getMessage());
             }
-            // If a snapshot were present with COMPLETED status, the manager would throw:
-            // CompletedMachineException — but current built-in repos delete rather than
-            // retain completed snapshots.
         });
     }
 }

@@ -103,6 +103,10 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
 
     @Override
     public void recoverPendingRetries() {
+        if (definition.retryCoordinator() == null) {
+            return;
+        }
+
         List<ExecutionSnapshot> pending = repository.listPendingRetries();
 
         for (ExecutionSnapshot snapshot : pending) {

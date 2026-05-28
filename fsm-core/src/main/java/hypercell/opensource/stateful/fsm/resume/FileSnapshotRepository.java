@@ -96,7 +96,7 @@ public class FileSnapshotRepository implements SnapshotRepository {
                 .map(this::load)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .filter(ExecutionSnapshot::isFailed)
+                .filter(s -> s.isFailed() || s.getStatus() == SnapshotStatus.RETRY_SCHEDULED)
                 .toList();
     }
 
@@ -209,7 +209,7 @@ public class FileSnapshotRepository implements SnapshotRepository {
     }
 
     private Path filePath(String executionId) {
-        String safe = executionId.replaceAll("[^a-zA-Z0-9\\-_]", "_");
+        String safe = java.net.URLEncoder.encode(executionId, java.nio.charset.StandardCharsets.UTF_8);
         return directory.resolve(safe + ".snapshot");
     }
 

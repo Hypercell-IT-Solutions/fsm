@@ -39,7 +39,7 @@ public class InMemorySnapshotRepository implements SnapshotRepository {
     @Override
     public List<ExecutionSnapshot> listPendingRetries() {
         return store.values().stream()
-                .filter(ExecutionSnapshot::isFailed)
+                .filter(s -> s.isFailed() || s.getStatus() == SnapshotStatus.RETRY_SCHEDULED)
                 .toList();
     }
 
