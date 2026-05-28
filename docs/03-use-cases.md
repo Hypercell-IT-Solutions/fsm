@@ -369,3 +369,69 @@ Use hooks for lightweight state setup and teardown (timestamps, context initiali
 ```
 
 **Hooks are not retry-tracked.** They always run when entering/exiting a state, even on resume. Keep them idempotent or side-effect-free. For anything non-idempotent (API calls, DB writes), use a sub-step instead.
+
+---
+
+## J. Interdependent sub-steps and smart context loading
+
+When a sub-step produces data that a later sub-step needs, the producer must persist that data and the `contextLoader` must restore it. On resume, completed sub-steps are skipped entirely — their in-memory mutations to the context are lost when `contextLoader` builds a fresh context.
+
+### The problem illustrated
+
+```
+PROCESSING state:
+  step 1 "reserve-stock"  → runs, sets ctx.reservationId = "RSV-42"  [success, SKIPPED on resume]
+  step 2 "charge-payment" → fails (payment gateway timeout)
+  step 3 "send-email"     → not reached
+
+On resume:
+  contextLoader("order-42") is called → returns a fresh OrderContext
+  ctx.reservationId is null  ← the in-memory mutation from step 1 is gone
+  step 1 is skipped
+  step 2 runs → reads ctx.reservationId → null → wrong behaviour
+```
+
+### The solution: persist in the sub-step, restore in contextLoader
+
+```java
+// Step 1: produce the reservationId and write it to durable storage
+.subStep("reserve-stock", ctx -> {
+    String reservationId = inventoryService.reserve(ctx.getOrderId(), ctx.getItems());
+
+    ctx.setReservationId(reservationId);                          // in-memory (lost on fresh load)
+    orderRepository.saveReservationId(ctx.getOrderId(), reservationId); // durable
+
+    return ActionResult.success();
+})
+
+// Step 2: reads reservationId — must work on first run AND on resume
+.subStep("charge-payment", ctx -> {
+    // ctx.getReservationId() is guaranteed non-null because contextLoader restores it
+    paymentService.charge(ctx.getOrderId(), ctx.getAmount(), ctx.getReservationId());
+    return ActionResult.success();
+})
+```
+
+```java
+// contextLoader restores all intermediate results, not just the base entity
+Function<String, OrderContext> contextLoader = orderId -> {
+    Order order = orderRepository.findById(orderId);
+    OrderContext ctx = new OrderContext(order);
+
+    // Restore reservationId if step 1 already completed in a previous run
+    String reservationId = orderRepository.findReservationId(orderId);
+    if (reservationId != null) {
+        ctx.setReservationId(reservationId);
+    }
+
+    return ctx;
+};
+```
+
+### The rule
+
+> Each sub-step is responsible for its own durability. If a sub-step produces output needed by a later step, it must save that output to durable storage before returning `ActionResult.success()`. The `contextLoader` then reconstructs the full context as it would have been at the point of failure.
+
+This is the same contract that any idempotent distributed system imposes: a step must be safe to skip only if its observable side-effects (in the context and in storage) are fully recoverable from durable state.
+
+See [Persistence & retry — Context on resume](05-persistence-and-retry.md#context-on-resume) for the detailed explanation.

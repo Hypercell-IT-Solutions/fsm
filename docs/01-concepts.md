@@ -104,6 +104,33 @@ This means even complex multi-step operations are safe to retry without double-c
 
 > **Naming is a contract.** Treat sub-step names like database column names. Renaming a sub-step breaks any snapshot saved under the old name.
 
+### Context mutations and resume
+
+Skipping a sub-step means its **code does not run again** — including any in-memory mutations it made to the context. On resume, the library calls `contextLoader(executionId)` to load a **fresh context**. A fresh context does not carry the in-memory changes made by skipped steps.
+
+This creates a dependency: if sub-step 2 relies on a value that sub-step 1 wrote to the context, and sub-step 1 is skipped on resume, sub-step 2 receives a context that never had that value set.
+
+**The required pattern:** any sub-step that produces data needed by a later step must persist that data to durable storage (database, cache, etc.) as part of its own work. The `contextLoader` must then read and restore that data when rebuilding the context.
+
+```
+Sub-step 1 runs:
+  → calls external API, gets reservationId
+  → writes ctx.setReservationId(reservationId)  ← in-memory only
+  → ALSO: saves reservationId to DB              ← durable
+
+Sub-step 2 fails.
+
+On resume, contextLoader is called:
+  → loads order from DB
+  → ALSO: loads reservationId from DB and sets ctx.setReservationId(...)  ← restored
+
+Sub-step 1 is skipped. Sub-step 2 runs with reservationId available.
+```
+
+Think of `contextLoader` as reconstructing the full context as it would have been at the point of failure — not just the base entity, but all intermediate results produced by completed sub-steps.
+
+See [Persistence & retry — Context on resume](05-persistence-and-retry.md#context-on-resume) for a complete example.
+
 ---
 
 ## Hooks vs sub-steps

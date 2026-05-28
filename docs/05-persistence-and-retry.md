@@ -31,6 +31,78 @@ The `::` separator is reserved — state names and sub-step names that contain `
 
 ---
 
+## Context on resume
+
+This is the most important constraint to understand when building workflows with multiple interdependent sub-steps.
+
+### The problem
+
+On resume, the library loads a **fresh context** by calling `contextLoader(executionId)`. Completed sub-steps are skipped — their code does not run. If a skipped sub-step mutated the context, that mutation is gone in the fresh context. Any subsequent sub-step that depends on it will receive a context that never had the value set.
+
+```
+State: PROCESSING
+  sub-step 1 "reserve-stock"   → runs, sets ctx.reservationId = "RSV-42"  [success]
+  sub-step 2 "charge-payment"  → fails (payment gateway timeout)
+
+Snapshot saved: step 1 completed, step 2 failed.
+
+--- process restarts ---
+
+Resume:
+  contextLoader("order-42") called → returns fresh OrderContext
+    → ctx.reservationId is null  ← not restored!
+  sub-step 1 skipped
+  sub-step 2 runs → reads ctx.reservationId → NullPointerException
+```
+
+### The solution: persist intermediate results in the sub-step that produces them
+
+Every sub-step that produces data consumed by a later step must write that data to durable storage as part of its own work. The `contextLoader` must then read and restore all such intermediate results.
+
+```java
+// Sub-step 1: reserve stock
+.subStep("reserve-stock", ctx -> {
+    String reservationId = inventoryService.reserve(ctx.getOrderId(), ctx.getItems());
+    ctx.setReservationId(reservationId);
+
+    // Persist the result so contextLoader can restore it on resume
+    orderRepository.saveReservationId(ctx.getOrderId(), reservationId);
+
+    return ActionResult.success();
+})
+
+// Sub-step 2: charge payment — depends on reservationId being present
+.subStep("charge-payment", ctx -> {
+    // reservationId must be available whether this is first run or a resume
+    paymentService.charge(ctx.getOrderId(), ctx.getAmount(), ctx.getReservationId());
+    return ActionResult.success();
+})
+```
+
+```java
+// contextLoader must restore all intermediate results, not just the base entity
+Function<String, OrderContext> contextLoader = orderId -> {
+    Order order = orderRepository.findById(orderId);
+    OrderContext ctx = new OrderContext(order);
+
+    // Restore intermediate results produced by completed sub-steps
+    String reservationId = orderRepository.findReservationId(orderId);
+    if (reservationId != null) {
+        ctx.setReservationId(reservationId); // present if sub-step 1 completed
+    }
+
+    return ctx;
+};
+```
+
+### Design rule
+
+> **Each sub-step is responsible for its own durability.** If a sub-step produces data, it must save that data to durable storage before returning `ActionResult.success()`. The `contextLoader` reconstructs the full context as it would have been at the point of failure — not just the base entity, but all intermediate results from completed sub-steps.
+
+This keeps sub-steps independently retryable and the resume mechanism predictable.
+
+---
+
 ## SnapshotStatus lifecycle
 
 The snapshot has its own status, separate from `ExecutionStatus` (the live instance status). It tracks what is happening to a failed execution between request boundaries.
