@@ -1,6 +1,7 @@
 package hypercell.opensource.stateful.fsm.builder;
 
 import hypercell.opensource.stateful.fsm.core.Action;
+import hypercell.opensource.stateful.fsm.core.Guard;
 import hypercell.opensource.stateful.fsm.core.StateHook;
 import hypercell.opensource.stateful.fsm.core.SubStepDefinition;
 import hypercell.opensource.stateful.fsm.core.SubStepHandler;
@@ -90,7 +91,7 @@ public class StateBuilder<C> {
         return parent;
     }
 
-    void addTransition(String event, String target, hypercell.opensource.stateful.fsm.core.Guard<C> guard, Action<C> action) {
+    void addTransition(String event, String target, Guard<C> guard, Action<C> action) {
         transitionData.add(new Object[]{event, target, guard, action});
     }
 
