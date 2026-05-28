@@ -1,6 +1,21 @@
 # Use cases
 
-Practical recipes for common integration patterns. Each is self-contained.
+Practical recipes for common integration patterns. Runnable examples live in the
+[`fsm-examples`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/)
+module (separate from the library JAR, includes Logback for visible log output):
+
+| Example class | Covers |
+|---|---|
+| [`SynchronousWorkflowExample`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/SynchronousWorkflowExample.java) | Direct `newInstance` + `trigger`, failure, `proceed()`, sub-step skip |
+| [`HttpManagerExample`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/HttpManagerExample.java) | `StateMachineManager`, contextLoader, 409/concurrent, completed-machine guard |
+| [`FileSnapshotRetryExample`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/FileSnapshotRetryExample.java) | `FileSnapshotRepository`, failure→snapshot→restart→manual retry, smart contextLoader |
+
+Run any example with:
+```
+mvn -pl fsm-examples compile exec:java -Dexec.mainClass=hypercell.opensource.stateful.fsm.examples.<ClassName>
+```
+
+---
 
 ---
 
