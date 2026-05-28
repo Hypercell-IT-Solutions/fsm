@@ -8,7 +8,7 @@ public class Main {
     public static void main(String[] args) {
         StateMachineDefinition<String> machineDefinition = StateMachine.<String>define("1")
                 .initial("STATE_A")
-                .listener(StateMachine.loggingListener("[TAG]"))
+                .listener(StateMachine.loggingListener())
                 .snapshotRepository(StateMachine.inMemoryRepository())
                 .state("STATE_A")
                 .on("e1").to("STATE_B").end()
