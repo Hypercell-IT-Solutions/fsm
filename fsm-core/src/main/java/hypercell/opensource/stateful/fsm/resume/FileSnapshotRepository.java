@@ -91,6 +91,7 @@ public class FileSnapshotRepository implements SnapshotRepository {
      * SCHEMA:
      * executionId          = abc-123
      * machineDefinitionId  = order-processing
+     * currentStateName      = PROCESSING
      * failedStateName      = PROCESSING
      * failedSubStepName    = charge-payment
      * lastTriggerEvent     = COMPLETE
@@ -110,6 +111,7 @@ public class FileSnapshotRepository implements SnapshotRepository {
 
         set(p, SnapshotFields.EXECUTION_ID, s.getExecutionId());
         set(p, SnapshotFields.MACHINE_DEFINITION_ID, s.getMachineDefinitionId());
+        set(p, SnapshotFields.CURRENT_STATE_NAME, s.getCurrentStateName());
         set(p, SnapshotFields.FAILED_STATE_NAME, s.getFailedStateName());
         set(p, SnapshotFields.FAILED_SUB_STATE_NAME, s.getFailedSubStepName());
         set(p, SnapshotFields.LAST_TRIGGER_EVENT, s.getLastTriggerEvent());
@@ -177,6 +179,7 @@ public class FileSnapshotRepository implements SnapshotRepository {
         return new ExecutionSnapshot.Builder()
                 .executionId(p.getProperty(SnapshotFields.EXECUTION_ID, ""))
                 .machineDefinitionId(p.getProperty(SnapshotFields.MACHINE_DEFINITION_ID, ""))
+                .currentStateName(p.getProperty(SnapshotFields.CURRENT_STATE_NAME))
                 .failedStateName(p.getProperty(SnapshotFields.FAILED_STATE_NAME))
                 .failedSubStepName(p.getProperty(SnapshotFields.FAILED_SUB_STATE_NAME))
                 .lastTriggerEvent(p.getProperty(SnapshotFields.LAST_TRIGGER_EVENT))
@@ -232,6 +235,7 @@ public class FileSnapshotRepository implements SnapshotRepository {
 
         public static final String EXECUTION_ID = "executionId";
         public static final String MACHINE_DEFINITION_ID = "machineDefinitionId";
+        public static final String CURRENT_STATE_NAME = "currentStateName";
         public static final String FAILED_STATE_NAME = "failedStateName";
         public static final String FAILED_SUB_STATE_NAME = "failedSubStateName";
         public static final String LAST_TRIGGER_EVENT = "lastTriggerEvent";

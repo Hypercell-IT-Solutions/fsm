@@ -42,22 +42,22 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
     private StateDefinition<C> currentState;
     private ExecutionStatus executionStatus;
 
-    public DefaultStateMachineInstance(StateMachineDefinition<C> definition,
-                                       StateDefinition<C> initialState,
-                                       C context,
-                                       SnapshotRepository snapshotRepository,
-                                       RetryCoordinator<C> retryCoordinator,
-                                       EventBus<C> eventBus) {
+    DefaultStateMachineInstance(StateMachineDefinition<C> definition,
+                                StateDefinition<C> initialState,
+                                C context,
+                                SnapshotRepository snapshotRepository,
+                                RetryCoordinator<C> retryCoordinator,
+                                EventBus<C> eventBus) {
         this(definition, initialState, context, UUID.randomUUID().toString(), snapshotRepository, retryCoordinator, eventBus);
     }
 
-    public DefaultStateMachineInstance(StateMachineDefinition<C> definition,
-                                       StateDefinition<C> initialState,
-                                       C context,
-                                       String executionId,
-                                       SnapshotRepository snapshotRepository,
-                                       RetryCoordinator<C> retryCoordinator,
-                                       EventBus<C> eventBus) {
+    DefaultStateMachineInstance(StateMachineDefinition<C> definition,
+                                StateDefinition<C> initialState,
+                                C context,
+                                String executionId,
+                                SnapshotRepository snapshotRepository,
+                                RetryCoordinator<C> retryCoordinator,
+                                EventBus<C> eventBus) {
         this.executionId = executionId;
         this.definition = definition;
         this.currentState = initialState;
@@ -86,15 +86,20 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
         }
 
         checkTerminal(initialState);
+
+        if (executionStatus == ExecutionStatus.RUNNING) {
+            saveCheckpoint();
+        }
     }
 
-    public DefaultStateMachineInstance(StateMachineDefinition<C> definition,
-                                       StateDefinition<C> failedState,
-                                       C context,
-                                       ExecutionRecord hydratedRecord,
-                                       SnapshotRepository snapshotRepository,
-                                       RetryCoordinator<C> retryCoordinator,
-                                       EventBus<C> eventBus) {
+    DefaultStateMachineInstance(StateMachineDefinition<C> definition,
+                                StateDefinition<C> failedState,
+                                C context,
+                                ExecutionRecord hydratedRecord,
+                                ExecutionStatus initialStatus,
+                                SnapshotRepository snapshotRepository,
+                                RetryCoordinator<C> retryCoordinator,
+                                EventBus<C> eventBus) {
         this.executionId = hydratedRecord.getExecutionId();
         this.definition = definition;
         this.currentState = failedState;
@@ -103,7 +108,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
         this.snapshotRepository = snapshotRepository;
         this.retryCoordinator = retryCoordinator;
         this.eventBus = eventBus != null ? eventBus : EventBus.empty();
-        this.executionStatus = ExecutionStatus.FAILED;
+        this.executionStatus = initialStatus;
 
         this.subStepRunner = new SubStepRunner<>(
                 definition.resumePolicy(), this.eventBus, executionId, definition.id());
@@ -166,6 +171,11 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
         }
 
         checkTerminal(nextState);
+
+        if (executionStatus == ExecutionStatus.RUNNING) {
+            saveCheckpoint();
+        }
+
         return nextState;
     }
 
@@ -196,18 +206,34 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
         }
 
         checkTerminal(currentState);
+
+        if (executionStatus == ExecutionStatus.RUNNING) {
+            saveCheckpoint();
+        }
+
         return currentState;
     }
 
     @Override
     public ExecutionSnapshot takeSnapshot(String pendingEvent) {
-        return ExecutionSnapshot.fromRecord(executionRecord, pendingEvent,
+        return ExecutionSnapshot.fromRecord(executionRecord, pendingEvent, definition.id(),
                 executionRecord.getSteps().stream()
                         .filter(s -> s.getResult().isSuccess())
                         .collect(Collectors.toMap(
                                 StepRecord::compositeKey,
                                 StepRecord::getResult,
                                 (existing, replacement) -> replacement)));
+    }
+
+    @Override
+    public ExecutionSnapshot takeCheckpoint() {
+        return ExecutionSnapshot.checkpoint(executionRecord, definition.id());
+    }
+
+    private void saveCheckpoint() {
+        if (snapshotRepository != null) {
+            snapshotRepository.save(executionId, takeCheckpoint());
+        }
     }
 
     private void checkTerminal(StateDefinition<C> state) {

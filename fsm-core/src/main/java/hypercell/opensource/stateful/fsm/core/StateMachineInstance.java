@@ -98,6 +98,8 @@ public interface StateMachineInstance<C> {
      */
     ExecutionSnapshot takeSnapshot(String pendingEvent);
 
+    ExecutionSnapshot takeCheckpoint();
+
     boolean isCompleted();
 
     boolean isFailed();

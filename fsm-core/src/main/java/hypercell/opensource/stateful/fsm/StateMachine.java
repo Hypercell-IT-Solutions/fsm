@@ -1,8 +1,10 @@
 package hypercell.opensource.stateful.fsm;
 
 import hypercell.opensource.stateful.fsm.builder.StateMachineBuilder;
+import hypercell.opensource.stateful.fsm.core.StateMachineDefinition;
 import hypercell.opensource.stateful.fsm.listener.LoggingEventListener;
 import hypercell.opensource.stateful.fsm.listener.MachineEventListener;
+import hypercell.opensource.stateful.fsm.manager.StateMachineManager;
 import hypercell.opensource.stateful.fsm.resume.FileSnapshotRepository;
 import hypercell.opensource.stateful.fsm.resume.InMemorySnapshotRepository;
 import hypercell.opensource.stateful.fsm.resume.SnapshotRepository;
@@ -10,6 +12,7 @@ import hypercell.opensource.stateful.fsm.retry.*;
 
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.function.Function;
 
 /**
  * The single entry point to the state machine library.
@@ -24,12 +27,38 @@ public final class StateMachine {
 
     /**
      * Begin defining a state machine.
+     * Use when the entire workflow runs within a single thread or process,
+     * and you control the instance lifecycle yourself.
+     * Examples: unit tests, batch jobs, synchronous pipelines, building a custom orchestrator on top of this library.
      *
      * @param id  stable identifier for this machine type
      * @param <C> context type flowing through the machine
      */
     public static <C> StateMachineBuilder<C> define(String id) {
         return new StateMachineBuilder<>(id);
+    }
+
+    /**
+     * Convenience factory for StateMachineManager.
+     * Equivalent to: definition.newManager(repository, contextLoader)
+     * Use when events arrive across multiple HTTP requests, the process may restart between requests.
+     * <p>
+     * The manager handles: load snapshot -> reconstruct -> execute -> save, concurrency protection,
+     * and auto-retry of failed sub-steps.
+     */
+    public static <C> StateMachineManager<C> manager(StateMachineDefinition<C> definition,
+                                                     SnapshotRepository repository,
+                                                     Function<String, C> contextLoader) {
+        return definition.newManager(repository, contextLoader);
+    }
+
+    /**
+     * Convenience factory for StateMachineManager.
+     * Equivalent to: definition.newManager(repository, contextLoader)
+     */
+    public static <C> StateMachineManager<C> manager(StateMachineDefinition<C> definition,
+                                                     Function<String, C> contextLoader) {
+        return definition.newManager(definition.repository(), contextLoader);
     }
 
     /**

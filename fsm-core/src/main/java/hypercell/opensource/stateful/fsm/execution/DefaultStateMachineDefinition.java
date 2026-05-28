@@ -1,19 +1,19 @@
 package hypercell.opensource.stateful.fsm.execution;
 
-import hypercell.opensource.stateful.fsm.core.StateDefinition;
-import hypercell.opensource.stateful.fsm.core.StateMachineDefinition;
-import hypercell.opensource.stateful.fsm.core.StateMachineInstance;
-import hypercell.opensource.stateful.fsm.core.TransitionDefinition;
+import hypercell.opensource.stateful.fsm.core.*;
 import hypercell.opensource.stateful.fsm.exception.InvalidStateException;
 import hypercell.opensource.stateful.fsm.listener.EventBus;
+import hypercell.opensource.stateful.fsm.manager.StateMachineManager;
 import hypercell.opensource.stateful.fsm.resume.ExecutionSnapshot;
 import hypercell.opensource.stateful.fsm.resume.ResumePolicy;
 import hypercell.opensource.stateful.fsm.resume.SnapshotRepository;
+import hypercell.opensource.stateful.fsm.resume.SnapshotStatus;
 import hypercell.opensource.stateful.fsm.retry.RetryCoordinator;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * The validated, immutable state machine blueprint.
@@ -64,6 +64,11 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
     }
 
     @Override
+    public SnapshotRepository repository() {
+        return snapshotRepository;
+    }
+
+    @Override
     public ResumePolicy<C> resumePolicy() {
         return resumePolicy;
     }
@@ -93,6 +98,40 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
     }
 
     @Override
+    public StateMachineManager<C> newManager(Function<String, C> contextLoader) {
+        return newManager(snapshotRepository, contextLoader);
+    }
+
+    @Override
+    public StateMachineManager<C> newManager(SnapshotRepository repository, Function<String, C> contextLoader) {
+        return StateMachineManager.create(this, repository, contextLoader);
+    }
+
+    @Override
+    public StateMachineInstance<C> reconstitute(C context, ExecutionSnapshot snapshot) {
+        return reconstitute(context, snapshot, snapshotRepository);
+    }
+
+    @Override
+    public StateMachineInstance<C> reconstitute(C context, ExecutionSnapshot snapshot, SnapshotRepository repository) {
+        StateDefinition<C> currentState = stateByName(snapshot.getCurrentStateName());
+
+        ExecutionRecord executionRecord = new ExecutionRecord(snapshot.getExecutionId(), snapshot.getCurrentStateName());
+
+        executionRecord.setStatus(ExecutionStatus.RUNNING);
+        if (snapshot.getLastTriggerEvent() != null) {
+            executionRecord.setLastTriggerEvent(snapshot.getLastTriggerEvent());
+        }
+
+        if (repository != null) {
+            repository.save(snapshot.getExecutionId(), snapshot.withStatus(SnapshotStatus.RUNNING));
+        }
+
+        return new DefaultStateMachineInstance<>(this, currentState, context, executionRecord,
+                ExecutionStatus.RUNNING, repository, retryCoordinator, eventBus);
+    }
+
+    @Override
     public StateMachineInstance<C> resume(C context, ExecutionSnapshot snapshot) {
         return resume(context, snapshot, snapshotRepository);
     }
@@ -109,7 +148,7 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
         }
 
         return new DefaultStateMachineInstance<>(
-                this, failedState, context, hydratedRecord,
+                this, failedState, context, hydratedRecord, ExecutionStatus.FAILED,
                 repository != null ? repository : snapshotRepository,
                 retryCoordinator, eventBus);
     }

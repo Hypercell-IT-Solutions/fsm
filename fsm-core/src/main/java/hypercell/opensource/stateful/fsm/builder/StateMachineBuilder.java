@@ -5,6 +5,7 @@ import hypercell.opensource.stateful.fsm.exception.StateMachineConfigurationExce
 import hypercell.opensource.stateful.fsm.execution.DefaultStateMachineDefinition;
 import hypercell.opensource.stateful.fsm.listener.EventBus;
 import hypercell.opensource.stateful.fsm.listener.MachineEventListener;
+import hypercell.opensource.stateful.fsm.manager.StateMachineManager;
 import hypercell.opensource.stateful.fsm.resume.DefaultResumePolicy;
 import hypercell.opensource.stateful.fsm.resume.ExecutionSnapshot;
 import hypercell.opensource.stateful.fsm.resume.ResumePolicy;
@@ -118,7 +119,7 @@ public class StateMachineBuilder<C> {
     }
 
     @SuppressWarnings("unchecked")
-    public DefaultStateMachineDefinition<C> build() {
+    public StateMachineDefinition<C> build() {
         if (stateBuilders.isEmpty()) throw new StateMachineConfigurationException(
                 "No states defined. Call .state(\"NAME\")...and().");
         if (initialStateName == null) throw new StateMachineConfigurationException(
@@ -190,6 +191,11 @@ public class StateMachineBuilder<C> {
         }
 
         @Override
+        public SnapshotRepository repository() {
+            return d.repository();
+        }
+
+        @Override
         public StateDefinition<C> stateByName(String n) {
             return d.stateByName(n);
         }
@@ -212,6 +218,26 @@ public class StateMachineBuilder<C> {
         @Override
         public StateMachineInstance<C> newInstance(C context, String executionId) {
             return d.newInstance(context, executionId);
+        }
+
+        @Override
+        public StateMachineManager<C> newManager(Function<String, C> contextLoader) {
+            return d.newManager(contextLoader);
+        }
+
+        @Override
+        public StateMachineManager<C> newManager(SnapshotRepository repository, Function<String, C> contextLoader) {
+            return d.newManager(repository, contextLoader);
+        }
+
+        @Override
+        public StateMachineInstance<C> reconstitute(C context, ExecutionSnapshot snapshot) {
+            return d.reconstitute(context, snapshot);
+        }
+
+        @Override
+        public StateMachineInstance<C> reconstitute(C context, ExecutionSnapshot snapshot, SnapshotRepository repository) {
+            return d.reconstitute(context, snapshot, repository);
         }
 
         @Override

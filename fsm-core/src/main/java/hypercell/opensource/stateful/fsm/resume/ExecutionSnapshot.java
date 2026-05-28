@@ -2,11 +2,13 @@ package hypercell.opensource.stateful.fsm.resume;
 
 import hypercell.opensource.stateful.fsm.core.ActionResult;
 import hypercell.opensource.stateful.fsm.execution.ExecutionRecord;
+import hypercell.opensource.stateful.fsm.execution.StepRecord;
 
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * A serializable point-in-time capture of a failed execution.
@@ -34,6 +36,7 @@ public class ExecutionSnapshot {
 
     private final String executionId;
     private final String machineDefinitionId;
+    private final String currentStateName;
     private final String failedStateName;
     private final String failedSubStepName;
     private final String lastTriggerEvent;
@@ -48,6 +51,7 @@ public class ExecutionSnapshot {
     private ExecutionSnapshot(Builder builder) {
         this.executionId = builder.executionId;
         this.machineDefinitionId = builder.machineDefinitionId;
+        this.currentStateName = builder.currentStateName;
         this.failedStateName = builder.failedStateName;
         this.failedSubStepName = builder.failedSubStepName;
         this.lastTriggerEvent = builder.lastTriggerEvent;
@@ -68,9 +72,12 @@ public class ExecutionSnapshot {
     public static ExecutionSnapshot fromRecord(
             ExecutionRecord executionRecord,
             String pendingEvent,
+            String machineDefinitionId,
             Map<String, ActionResult> completedSubStepResults) {
         return new Builder()
                 .executionId(executionRecord.getExecutionId())
+                .machineDefinitionId(machineDefinitionId)
+                .currentStateName(executionRecord.getFailedStateName())
                 .failedStateName(executionRecord.getFailedStateName())
                 .failedSubStepName(executionRecord.getFailedSubStepName())
                 .lastTriggerEvent(pendingEvent)
@@ -79,6 +86,26 @@ public class ExecutionSnapshot {
                 .lastFailedAt(Instant.now())
                 .lastErrorMessage(null)
                 .status(SnapshotStatus.FAILED)
+                .capturedAt(Instant.now())
+                .build();
+    }
+
+    public static ExecutionSnapshot checkpoint(ExecutionRecord executionRecord, String machineDefinitionId) {
+        Map<String, ActionResult> completed = executionRecord.getSteps().stream()
+                .filter(s -> s.getResult().isSuccess())
+                .collect(Collectors.toMap(
+                        StepRecord::compositeKey,
+                        StepRecord::getResult,
+                        (a, b) -> b
+                ));
+
+        return new Builder()
+                .executionId(executionRecord.getExecutionId())
+                .machineDefinitionId(machineDefinitionId)
+                .currentStateName(executionRecord.getCurrentStateName())
+                .lastTriggerEvent(executionRecord.getLastTriggerEvent())
+                .completedSubStepResults(completed)
+                .status(SnapshotStatus.RUNNING)
                 .capturedAt(Instant.now())
                 .build();
     }
@@ -100,12 +127,28 @@ public class ExecutionSnapshot {
         return new Builder(this).machineDefinitionId(id).build();
     }
 
+    public boolean isRunning() {
+        return status == SnapshotStatus.RUNNING;
+    }
+
+    public boolean isFailed() {
+        return status == SnapshotStatus.FAILED;
+    }
+
+    public boolean isCompleted() {
+        return status == SnapshotStatus.COMPLETED;
+    }
+
     public String getExecutionId() {
         return executionId;
     }
 
     public String getMachineDefinitionId() {
         return machineDefinitionId;
+    }
+
+    public String getCurrentStateName() {
+        return currentStateName;
     }
 
     public String getFailedStateName() {
@@ -163,6 +206,7 @@ public class ExecutionSnapshot {
     public static class Builder {
         String executionId = "";
         String machineDefinitionId = "";
+        String currentStateName;
         String failedStateName;
         String failedSubStepName;
         String lastTriggerEvent;
@@ -180,6 +224,7 @@ public class ExecutionSnapshot {
         Builder(ExecutionSnapshot source) {
             this.executionId = source.executionId;
             this.machineDefinitionId = source.machineDefinitionId;
+            this.currentStateName = source.currentStateName;
             this.failedStateName = source.failedStateName;
             this.failedSubStepName = source.failedSubStepName;
             this.lastTriggerEvent = source.lastTriggerEvent;
@@ -199,6 +244,11 @@ public class ExecutionSnapshot {
 
         public Builder machineDefinitionId(String v) {
             machineDefinitionId = v;
+            return this;
+        }
+
+        public Builder currentStateName(String v) {
+            currentStateName = v;
             return this;
         }
 

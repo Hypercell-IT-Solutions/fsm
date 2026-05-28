@@ -1,0 +1,103 @@
+package hypercell.opensource.stateful.fsm.manager;
+
+import hypercell.opensource.stateful.fsm.core.StateMachineDefinition;
+import hypercell.opensource.stateful.fsm.resume.ExecutionSnapshot;
+import hypercell.opensource.stateful.fsm.resume.SnapshotRepository;
+
+import java.util.Optional;
+import java.util.function.Function;
+
+/**
+ * Orchestrates the full request lifecycle for HTTP-driven state machine workflows.
+ * <p>
+ * This is the component your HTTP endpoint talks to directly. Each call to trigger()
+ * encapsulates the complete load → reconstruct → execute → save cycle, so the
+ * endpoint never needs to know about snapshots, reconstitution, or machine instances.
+ * <p>
+ * FULL LIFECYCLE PER REQUEST:
+ * <p>
+ * 1. Acquire per-executionId lock (throws ConcurrentExecutionException if locked)
+ * 2. Load snapshot from repository
+ * 3. Resolve context (from contextLoader or caller-supplied override)
+ * 4. Branch on snapshot status:
+ * No snapshot  → newInstance(context, executionId) → trigger(event)
+ * RUNNING      → reconstitute(context, snapshot)   → trigger(event)
+ * FAILED       → resume(context, snapshot)         → proceed() → trigger(event)
+ * COMPLETED    → throw CompletedMachineException
+ * 5. Checkpoint is saved internally by trigger() / proceed()
+ * 6. Release lock
+ * 7. Return ManagedTransitionResult
+ * <p>
+ * FAILED + NEW EVENT (step 4 FAILED branch):
+ * When the previous request failed mid-sub-step, the manager auto-retries the failed
+ * sub-steps via proceed() before applying the new event. The sub-steps that already
+ * completed in the previous run are skipped — they are NOT re-executed.
+ * <p>
+ * CONCURRENCY:
+ * Per-executionId in-process locking prevents concurrent access within the same JVM.
+ * For distributed deployments, the SnapshotRepository implementation should add
+ * optimistic locking (e.g. database compare-and-swap, Redis SET NX).
+ * <p>
+ * SPRING BOOT USAGE:
+ *
+ * @param <C> the context type flowing through the machine
+ * @Bean public StateMachineManager<OrderContext> orderMachineManager(
+ * StateMachineDefinition<OrderContext> definition,
+ * SnapshotRepository repository,
+ * OrderService orderService) {
+ * return definition.newManager(repository, id -> orderService.loadContext(id));
+ * }
+ * <p>
+ * // In your controller:
+ * ManagedTransitionResult<OrderContext> result =
+ * manager.trigger(orderId, request.getEvent());
+ */
+public interface StateMachineManager<C> {
+
+    /**
+     * Process an event using the manager's configured contextLoader to supply context.
+     *
+     * @param executionId your business entity ID (orderId, transactionId, etc.)
+     * @param event       the event name from the incoming request
+     */
+    ManagedTransitionResult<C> trigger(String executionId, String event);
+
+    /**
+     * Process an event with a caller-supplied context that overrides the contextLoader
+     * for this call only. Useful when the context is already available in the request
+     * (e.g. the HTTP request body contains the order data).
+     *
+     * @param contextOverride the context to use; null falls back to the contextLoader
+     */
+    ManagedTransitionResult<C> trigger(String executionId, String event, C contextOverride);
+
+    /**
+     * Manually retry failed sub-steps without triggering a new event.
+     * <p>
+     * Use this when you want to retry a failed execution before the next business
+     * event arrives — for example, a scheduled job that retries all FAILED executions.
+     * The caller controls when to retry; the library handles which sub-steps to skip.
+     */
+    ManagedTransitionResult<C> proceed(String executionId);
+
+    /**
+     * Manually retry with a context override.
+     */
+    ManagedTransitionResult<C> proceed(String executionId, C contextOverride);
+
+    /**
+     * Load the current snapshot without changing anything.
+     * Returns empty if the execution has never started or has completed and been cleaned up.
+     */
+    Optional<ExecutionSnapshot> snapshotOf(String executionId);
+
+    /**
+     * The only way to create a StateMachineManager.
+     * Keeps DefaultStateMachineManager invisible to consumers.
+     */
+    static <C> StateMachineManager<C> create(StateMachineDefinition<C> definition,
+                                             SnapshotRepository repository,
+                                             Function<String, C> contextLoader) {
+        return new DefaultStateMachineManager<>(definition, repository, contextLoader);
+    }
+}

@@ -1,0 +1,286 @@
+package hypercell.opensource.stateful.fsm.manager;
+
+import hypercell.opensource.stateful.fsm.core.ExecutionStatus;
+import hypercell.opensource.stateful.fsm.core.StateMachineDefinition;
+import hypercell.opensource.stateful.fsm.core.StateMachineInstance;
+import hypercell.opensource.stateful.fsm.exception.CompletedMachineException;
+import hypercell.opensource.stateful.fsm.exception.ConcurrentExecutionException;
+import hypercell.opensource.stateful.fsm.exception.SubStepExecutionException;
+import hypercell.opensource.stateful.fsm.resume.ExecutionSnapshot;
+import hypercell.opensource.stateful.fsm.resume.SnapshotRepository;
+
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
+
+/**
+ * Default implementation of StateMachineManager.
+ * <p>
+ * CONCURRENCY MODEL:
+ * A ConcurrentHashMap<executionId, ReentrantLock> provides per-execution in-process
+ * locking. ReentrantLock.tryLock() returns immediately (non-blocking): if the lock
+ * is held by another thread, ConcurrentExecutionException is thrown rather than
+ * blocking the caller. This maps naturally to HTTP: return 409 Conflict immediately
+ * rather than making the client wait.
+ * <p>
+ * Lock entries are cleaned up after each call to avoid unbounded map growth. Entries
+ * are only removed when no thread is waiting — checked via ReentrantLock.hasQueuedThreads().
+ * <p>
+ * AUTO-PROCEED BEHAVIOR:
+ * When a FAILED snapshot is found and a new event arrives, the manager calls proceed()
+ * first (which retries failed sub-steps, skipping the ones that already succeeded),
+ * then calls trigger(event) to apply the new transition. This matches the requirement:
+ * "auto-proceed, but completed sub-steps should not be evaluated twice."
+ *
+ * @param <C> the context type flowing through the machine
+ */
+public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
+
+    private final StateMachineDefinition<C> definition;
+    private final SnapshotRepository repository;
+    private final Function<String, C> contextLoader;
+    private final ConcurrentHashMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
+
+    DefaultStateMachineManager(StateMachineDefinition<C> definition,
+                               SnapshotRepository repository,
+                               Function<String, C> contextLoader) {
+        this.definition = definition;
+        this.repository = repository;
+        this.contextLoader = contextLoader;
+    }
+
+    @Override
+    public ManagedTransitionResult<C> trigger(String executionId, String event) {
+        return trigger(executionId, event, null);
+    }
+
+    @Override
+    public ManagedTransitionResult<C> trigger(String executionId, String event, C contextOverride) {
+        ReentrantLock lock = acquireLock(executionId);
+        try {
+            return doTrigger(executionId, event, contextOverride);
+        } finally {
+            releaseLock(executionId, lock);
+        }
+    }
+
+    @Override
+    public ManagedTransitionResult<C> proceed(String executionId) {
+        return proceed(executionId, null);
+    }
+
+    @Override
+    public ManagedTransitionResult<C> proceed(String executionId, C contextOverride) {
+        ReentrantLock lock = acquireLock(executionId);
+        try {
+            return doProceed(executionId, contextOverride);
+        } finally {
+            releaseLock(executionId, lock);
+        }
+    }
+
+    @Override
+    public Optional<ExecutionSnapshot> snapshotOf(String executionId) {
+        return repository.load(executionId);
+    }
+
+    private ManagedTransitionResult<C> doTrigger(String executionId, String event,
+                                                 C contextOverride) {
+        Optional<ExecutionSnapshot> snapshotOpt = repository.load(executionId);
+        C context = resolveContext(executionId, contextOverride);
+
+        if (snapshotOpt.isEmpty()) {
+            return firstTrigger(executionId, event, context);
+        }
+
+        ExecutionSnapshot snapshot = snapshotOpt.get();
+
+        if (snapshot.isCompleted()) {
+            throw new CompletedMachineException(
+                    executionId, snapshot.getCurrentStateName());
+        }
+
+        if (snapshot.isFailed()) {
+            return proceedThenTrigger(executionId, event, context, snapshot);
+        }
+
+        return reconstituteThenTrigger(executionId, event, context, snapshot);
+    }
+
+    /**
+     * First event ever for this executionId.
+     * Creates a fresh instance (initial state sub-steps run in constructor),
+     * then fires the transition event.
+     */
+    private ManagedTransitionResult<C> firstTrigger(String executionId, String event, C context) {
+        String fromState = definition.initialState().name();
+
+        StateMachineInstance<C> instance;
+        try {
+            instance = definition.newInstance(context, executionId);
+        } catch (SubStepExecutionException e) {
+            return ManagedTransitionResult.<C>builder()
+                    .executionId(executionId)
+                    .fromState(fromState)
+                    .toState(fromState)
+                    .executionStatus(ExecutionStatus.FAILED)
+                    .failedStateName(e.getStateName())
+                    .failedSubStepName(e.getSubStepName())
+                    .build();
+        }
+
+        return executeTrigger(instance, event, fromState, false);
+    }
+
+    /**
+     * FAILED snapshot + new event.
+     * Auto-proceeds (retrying failed sub-steps, skipping completed ones),
+     * then fires the new event if proceed() succeeds.
+     */
+    private ManagedTransitionResult<C> proceedThenTrigger(String executionId, String event,
+                                                          C context, ExecutionSnapshot snapshot) {
+        StateMachineInstance<C> instance = definition.resume(context, snapshot, repository);
+        String fromState = instance.currentState().name();
+
+        try {
+            instance.proceed();
+        } catch (SubStepExecutionException e) {
+            return ManagedTransitionResult.<C>builder()
+                    .executionId(executionId)
+                    .fromState(fromState)
+                    .toState(fromState)
+                    .executionStatus(ExecutionStatus.FAILED)
+                    .proceededFromFailure(true)
+                    .failedStateName(e.getStateName())
+                    .failedSubStepName(e.getSubStepName())
+                    .build();
+        }
+
+        return executeTrigger(instance, event, fromState, true);
+    }
+
+    /**
+     * RUNNING snapshot — process restarted between requests.
+     * Reconstitutes at currentStateName and fires the event.
+     */
+    private ManagedTransitionResult<C> reconstituteThenTrigger(String executionId, String event,
+                                                               C context, ExecutionSnapshot snapshot) {
+        StateMachineInstance<C> instance = definition.reconstitute(context, snapshot, repository);
+        String fromState = instance.currentState().name();
+        return executeTrigger(instance, event, fromState, false);
+    }
+
+    /**
+     * Fires trigger(event) on an instance and builds the result.
+     * SubStepExecutionException is caught here — the snapshot is already saved
+     * inside handleFailure() so we just build a FAILED result.
+     */
+    private ManagedTransitionResult<C> executeTrigger(StateMachineInstance<C> instance,
+                                                      String event, String fromState,
+                                                      boolean proceededFromFailure) {
+        try {
+            instance.trigger(event);
+            return ManagedTransitionResult.<C>builder()
+                    .executionId(instance.executionId())
+                    .fromState(fromState)
+                    .toState(instance.currentState().name())
+                    .executionStatus(instance.status())
+                    .proceededFromFailure(proceededFromFailure)
+                    .build();
+        } catch (SubStepExecutionException e) {
+            return ManagedTransitionResult.<C>builder()
+                    .executionId(instance.executionId())
+                    .fromState(fromState)
+                    .toState(instance.currentState().name())
+                    .executionStatus(ExecutionStatus.FAILED)
+                    .proceededFromFailure(proceededFromFailure)
+                    .failedStateName(e.getStateName())
+                    .failedSubStepName(e.getSubStepName())
+                    .build();
+        }
+    }
+
+    /**
+     * Manual proceed — retry failed sub-steps without a new event.
+     */
+    private ManagedTransitionResult<C> doProceed(String executionId, C contextOverride) {
+        ExecutionSnapshot snapshot = repository.load(executionId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No snapshot found for executionId: " + executionId));
+
+        if (snapshot.isCompleted()) {
+            throw new CompletedMachineException(executionId, snapshot.getCurrentStateName());
+        }
+        if (!snapshot.isFailed()) {
+            throw new IllegalStateException(
+                    "proceed() requires a FAILED snapshot. Current status: " + snapshot.getStatus());
+        }
+
+        C context = resolveContext(executionId, contextOverride);
+        StateMachineInstance<C> instance = definition.resume(context, snapshot, repository);
+        String fromState = instance.currentState().name();
+
+        try {
+            instance.proceed();
+            return ManagedTransitionResult.<C>builder()
+                    .executionId(executionId)
+                    .fromState(fromState)
+                    .toState(instance.currentState().name())
+                    .executionStatus(instance.status())
+                    .build();
+        } catch (SubStepExecutionException e) {
+            return ManagedTransitionResult.<C>builder()
+                    .executionId(executionId)
+                    .fromState(fromState)
+                    .toState(instance.currentState().name())
+                    .executionStatus(ExecutionStatus.FAILED)
+                    .failedStateName(e.getStateName())
+                    .failedSubStepName(e.getSubStepName())
+                    .build();
+        }
+    }
+
+    /**
+     * Resolves the context for this request.
+     * If contextOverride is provided, use it directly.
+     * Otherwise, delegate to the manager's configured contextLoader.
+     */
+    private C resolveContext(String executionId, C contextOverride) {
+        if (contextOverride != null) {
+            return contextOverride;
+        }
+        if (contextLoader != null) {
+            return contextLoader.apply(executionId);
+        }
+        throw new IllegalStateException(
+                "No context available for executionId '" + executionId + "'. " +
+                        "Either configure a contextLoader or pass a contextOverride.");
+    }
+
+    /**
+     * Acquire the per-executionId lock. Returns immediately.
+     * Throws ConcurrentExecutionException if another thread holds the lock.
+     * <p>
+     * NOTE: This is in-process only. For distributed deployments, implement
+     * optimistic locking in your SnapshotRepository (e.g. compare-and-swap
+     * in PostgreSQL, or SET NX with TTL in Redis).
+     */
+    private ReentrantLock acquireLock(String executionId) {
+        ReentrantLock lock = locks.computeIfAbsent(executionId, k -> new ReentrantLock());
+        if (!lock.tryLock()) {
+            throw new ConcurrentExecutionException(executionId);
+        }
+        return lock;
+    }
+
+    /**
+     * Release the lock and clean up the map entry if no threads are waiting.
+     * Prevents unbounded growth of the locks map for long-running applications.
+     */
+    private void releaseLock(String executionId, ReentrantLock lock) {
+        lock.unlock();
+        locks.computeIfPresent(executionId, (k, l) ->
+                l.hasQueuedThreads() ? l : null);
+    }
+}
