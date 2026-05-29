@@ -29,7 +29,7 @@ public interface StateMachineInstance<C> {
 
     /**
      * Unique identifier for this execution. Used as the snapshot storage key.
-     * Either a generated UUID or the value passed to {@code newInstance(context, executionId)}.
+     * Either a generated UUID or the value passed to {@code newInstance(ctx, executionId)}.
      */
     String executionId();
 
@@ -98,7 +98,7 @@ public interface StateMachineInstance<C> {
      * available to callers who want to checkpoint a long-running machine.
      *
      * @param pendingEvent the event that was being processed when this snapshot
-     *                     is taken; null if called outside a trigger() context
+     *                     is taken; null if called outside a trigger() ctx
      */
     ExecutionSnapshot takeSnapshot(String pendingEvent);
 

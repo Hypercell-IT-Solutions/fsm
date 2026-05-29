@@ -52,7 +52,7 @@ public class RetryCoordinator<C> {
     /**
      * Loads a fresh context for retry attempts.
      * The original context object may be stale (it was created for the first run).
-     * This function is called with the executionId and should return a fresh context.
+     * This function is called with the executionId and should return a fresh ctx.
      * <p>
      * Example: executionId → orderService.loadOrderContext(executionId)
      */
@@ -158,9 +158,9 @@ public class RetryCoordinator<C> {
         repository.save(executionId, snapshot.withStatus(SnapshotStatus.RUNNING));
 
         try {
-            C context = contextLoader.apply(executionId);
+            C ctx = contextLoader.apply(executionId);
 
-            StateMachineInstance<C> resumed = definition.resume(context, snapshot, repository);
+            StateMachineInstance<C> resumed = definition.resume(ctx, snapshot, repository);
 
             resumed.proceed();
 

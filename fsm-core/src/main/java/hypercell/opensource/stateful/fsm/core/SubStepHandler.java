@@ -30,7 +30,7 @@ public interface SubStepHandler<C> {
     String name();
 
     @SuppressWarnings("java:S112")
-    ActionResult execute(C context) throws Exception;
+    ActionResult execute(C ctx) throws Exception;
 
     /**
      * Adapts this handler to the {@link Action} interface when needed.

@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Demonstrates file-based snapshot persistence, manual retry, and smart context loading.
+ * Demonstrates file-based snapshot persistence, manual retry, and smart ctx loading.
  *
  * <p>Run with: {@code mvn -pl fsm-examples compile exec:java -Dexec.mainClass=hypercell.opensource.stateful.fsm.examples.FileSnapshotRetryExample}
  *
@@ -25,19 +25,19 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>A sub-step failure saves the snapshot with completed steps recorded</li>
  *   <li>Simulated process restart: a new manager is created from the same snapshot directory</li>
  *   <li>Manual retry via {@code manager.proceed()}: completed steps are skipped</li>
- *   <li><strong>Smart context loading</strong>: each sub-step persists its output to durable
+ *   <li><strong>Smart ctx loading</strong>: each sub-step persists its output to durable
  *       storage, and the {@code contextLoader} restores that output on resume — so that
  *       downstream steps (which would have been skipped) still find the data they need
- *       in the context</li>
+ *       in the ctx</li>
  * </ul>
  *
  * <p>See also:
- * <a href="../../../../../../../../../../docs/05-persistence-and-retry.md#context-on-resume">Persistence &amp; retry — Context on resume</a>
+ * <a href="../../../../../../../../../../docs/05-persistence-and-retry.md#ctx-on-resume">Persistence &amp; retry — Context on resume</a>
  */
 public class FileSnapshotRetryExample {
 
     // -------------------------------------------------------------------------
-    // Domain context
+    // Domain ctx
     // -------------------------------------------------------------------------
 
     static class OrderContext {
@@ -71,7 +71,7 @@ public class FileSnapshotRetryExample {
         ctx.reservationId = reservationId;
 
         // Persist to durable storage so contextLoader can restore it on resume.
-        // Without this, ctx.reservationId would be null after a fresh context load,
+        // Without this, ctx.reservationId would be null after a fresh ctx load,
         // and charge-payment would fail with a NullPointerException instead of charging.
         RESERVATION_DB.put(ctx.orderId, reservationId);
 
@@ -101,7 +101,7 @@ public class FileSnapshotRetryExample {
     }
 
     // -------------------------------------------------------------------------
-    // Context loader — rebuilds the context as it was at the point of failure
+    // Context loader — rebuilds the ctx as it was at the point of failure
     // -------------------------------------------------------------------------
 
     static OrderContext loadContext(String orderId) {

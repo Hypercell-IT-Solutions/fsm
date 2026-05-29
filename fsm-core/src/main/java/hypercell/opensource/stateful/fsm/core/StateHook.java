@@ -30,7 +30,7 @@ public interface StateHook<C> {
     /**
      * Called after the machine transitions INTO this state, before sub-steps run.
      */
-    default void onEntry(C context) {
+    default void onEntry(C ctx) {
     }
 
     /**
@@ -38,6 +38,6 @@ public interface StateHook<C> {
      * Only called when a transition actually fires — not called if the machine
      * fails mid-state (the machine stays in the failed state for retry).
      */
-    default void onExit(C context) {
+    default void onExit(C ctx) {
     }
 }

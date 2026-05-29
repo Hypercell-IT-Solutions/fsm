@@ -8,7 +8,7 @@ package hypercell.opensource.stateful.fsm.core;
  * evaluated in definition order — the first one whose guard returns true is taken.
  * <p>
  * IMPORTANT — SIDE EFFECT FREE:
- * Guards must be pure — they should only read the context, never modify it.
+ * Guards must be pure — they should only read the ctx, never modify it.
  * Guards can be called multiple times (once per candidate transition per event),
  * and in the future may be called on threads the caller doesn't control.
  * <p>
@@ -22,8 +22,8 @@ package hypercell.opensource.stateful.fsm.core;
 public interface Guard<C> {
 
     /**
-     * @param context the current machine context (read-only)
+     * @param ctx the current machine ctx (read-only)
      * @return true if the transition should fire, false to skip this transition
      */
-    boolean evaluate(C context);
+    boolean evaluate(C ctx);
 }

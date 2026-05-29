@@ -106,7 +106,7 @@ public class StateMachineBuilder<C> {
      * The loader must restore all intermediate results that completed sub-steps
      * wrote to durable storage, so that the resumed context is equivalent to the
      * context at the point of failure. See the
-     * <a href="https://github.com/hypercell/fsm-library/blob/main/docs/05-persistence-and-retry.md#context-on-resume">Context on resume</a>
+     * <a href="https://github.com/hypercell/fsm-library/blob/main/docs/05-persistence-and-retry.md#ctx-on-resume">Context on resume</a>
      * documentation.
      * <p>
      * Required when using any retry policy other than {@link NoAutoRetryPolicy}.
@@ -271,8 +271,8 @@ public class StateMachineBuilder<C> {
         }
 
         @Override
-        public StateMachineInstance<C> newInstance(C context, String executionId) {
-            return d.newInstance(context, executionId);
+        public StateMachineInstance<C> newInstance(C ctx, String executionId) {
+            return d.newInstance(ctx, executionId);
         }
 
         @Override
@@ -286,18 +286,18 @@ public class StateMachineBuilder<C> {
         }
 
         @Override
-        public StateMachineInstance<C> reconstitute(C context, ExecutionSnapshot snapshot) {
-            return d.reconstitute(context, snapshot);
+        public StateMachineInstance<C> reconstitute(C ctx, ExecutionSnapshot snapshot) {
+            return d.reconstitute(ctx, snapshot);
         }
 
         @Override
-        public StateMachineInstance<C> reconstitute(C context, ExecutionSnapshot snapshot, SnapshotRepository repository) {
-            return d.reconstitute(context, snapshot, repository);
+        public StateMachineInstance<C> reconstitute(C ctx, ExecutionSnapshot snapshot, SnapshotRepository repository) {
+            return d.reconstitute(ctx, snapshot, repository);
         }
 
         @Override
-        public StateMachineInstance<C> resume(C context, ExecutionSnapshot snapshot) {
-            return d.resume(context, snapshot);
+        public StateMachineInstance<C> resume(C ctx, ExecutionSnapshot snapshot) {
+            return d.resume(ctx, snapshot);
         }
 
         @Override

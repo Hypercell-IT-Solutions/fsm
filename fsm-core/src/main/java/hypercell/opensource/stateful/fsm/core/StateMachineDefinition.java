@@ -64,25 +64,25 @@ public interface StateMachineDefinition<C> {
      * Create a fresh instance starting at the initial state.
      * A UUID is generated as the execution ID (used as the snapshot key).
      *
-     * @param context the mutable domain object passed to every guard, action, and sub-step
+     * @param ctx the mutable domain object passed to every guard, action, and sub-step
      */
-    StateMachineInstance<C> newInstance(C context);
+    StateMachineInstance<C> newInstance(C ctx);
 
     /**
      * Create a fresh instance with an explicit execution ID.
      * Use this when your business entity already has a meaningful ID
      * (e.g. {@code orderId}) so the snapshot key matches your domain.
      *
-     * @param context     the mutable domain object
+     * @param ctx     the mutable domain object
      * @param executionId stable identifier; becomes the snapshot storage key
      */
-    StateMachineInstance<C> newInstance(C context, String executionId);
+    StateMachineInstance<C> newInstance(C ctx, String executionId);
 
     /**
      * Create a {@link StateMachineManager} bound to this definition's repository.
      * Equivalent to {@code newManager(definition.repository(), contextLoader)}.
      *
-     * @param contextLoader how to load a fresh context given an executionId
+     * @param contextLoader how to load a fresh ctx given an executionId
      */
     StateMachineManager<C> newManager(Function<String, C> contextLoader);
 
@@ -93,7 +93,7 @@ public interface StateMachineDefinition<C> {
      * during definition-time testing).
      *
      * @param repository    where snapshots are stored and loaded
-     * @param contextLoader how to load a fresh context given an executionId
+     * @param contextLoader how to load a fresh ctx given an executionId
      */
     StateMachineManager<C> newManager(SnapshotRepository repository, Function<String, C> contextLoader);
 
@@ -107,17 +107,17 @@ public interface StateMachineDefinition<C> {
      * <p>
      * This method does NOT re-run any sub-steps. It is purely a position restore.
      *
-     * @param context  a fresh context loaded for this execution
+     * @param ctx  a fresh ctx loaded for this execution
      * @param snapshot a snapshot with status {@code RUNNING}
      */
-    StateMachineInstance<C> reconstitute(C context, ExecutionSnapshot snapshot);
+    StateMachineInstance<C> reconstitute(C ctx, ExecutionSnapshot snapshot);
 
     /**
      * Same as {@link #reconstitute(Object, ExecutionSnapshot)} but also binds the
      * provided repository to the reconstituted instance so that subsequent
      * checkpoints are saved there.
      */
-    StateMachineInstance<C> reconstitute(C context, ExecutionSnapshot snapshot, SnapshotRepository repository);
+    StateMachineInstance<C> reconstitute(C ctx, ExecutionSnapshot snapshot, SnapshotRepository repository);
 
     /**
      * Resume a {@code FAILED} instance from a failure snapshot.
@@ -131,16 +131,16 @@ public interface StateMachineDefinition<C> {
      * the completed sub-step results from the snapshot so the resume policy can
      * correctly skip them.
      *
-     * @param context  a fresh context loaded for this execution (see
-     *                 <a href="https://github.com/hypercell/fsm-library/blob/main/docs/05-persistence-and-retry.md#context-on-resume">Context on resume</a>)
+     * @param ctx  a fresh ctx loaded for this execution (see
+     *                 <a href="https://github.com/hypercell/fsm-library/blob/main/docs/05-persistence-and-retry.md#ctx-on-resume">Context on resume</a>)
      * @param snapshot a snapshot with status {@code FAILED}
      */
-    StateMachineInstance<C> resume(C context, ExecutionSnapshot snapshot);
+    StateMachineInstance<C> resume(C ctx, ExecutionSnapshot snapshot);
 
     /**
      * Same as {@link #resume(Object, ExecutionSnapshot)} but also binds the provided
      * repository to the resumed instance.
      */
-    StateMachineInstance<C> resume(C context, ExecutionSnapshot snapshot,
+    StateMachineInstance<C> resume(C ctx, ExecutionSnapshot snapshot,
                                    SnapshotRepository repository);
 }

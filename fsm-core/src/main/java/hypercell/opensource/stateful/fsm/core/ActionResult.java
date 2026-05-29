@@ -26,7 +26,7 @@ public final class ActionResult {
 
     /**
      * Key-value output produced by the action.
-     * Later sub-steps and transition actions can read this from the context.
+     * Later sub-steps and transition actions can read this from the ctx.
      * Stored in the snapshot so it survives across retry attempts.
      */
     private final Map<String, Object> output;

@@ -140,10 +140,10 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
     private ManagedTransitionResult<C> doTrigger(String executionId, String event,
                                                  C contextOverride) {
         Optional<ExecutionSnapshot> snapshotOpt = repository.load(executionId);
-        C context = resolveContext(executionId, contextOverride);
+        C ctx = resolveContext(executionId, contextOverride);
 
         if (snapshotOpt.isEmpty()) {
-            return firstTrigger(executionId, event, context);
+            return firstTrigger(executionId, event, ctx);
         }
 
         ExecutionSnapshot snapshot = snapshotOpt.get();
@@ -154,10 +154,10 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
         }
 
         if (snapshot.isFailed()) {
-            return proceedThenTrigger(executionId, event, context, snapshot);
+            return proceedThenTrigger(executionId, event, ctx, snapshot);
         }
 
-        return reconstituteThenTrigger(executionId, event, context, snapshot);
+        return reconstituteThenTrigger(executionId, event, ctx, snapshot);
     }
 
     /**
@@ -165,12 +165,12 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
      * Creates a fresh instance (initial state sub-steps run in constructor),
      * then fires the transition event.
      */
-    private ManagedTransitionResult<C> firstTrigger(String executionId, String event, C context) {
+    private ManagedTransitionResult<C> firstTrigger(String executionId, String event, C ctx) {
         String fromState = definition.initialState().name();
 
         StateMachineInstance<C> instance;
         try {
-            instance = definition.newInstance(context, executionId);
+            instance = definition.newInstance(ctx, executionId);
         } catch (SubStepExecutionException e) {
             return ManagedTransitionResult.<C>builder()
                     .executionId(executionId)
@@ -191,8 +191,8 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
      * then fires the new event if proceed() succeeds.
      */
     private ManagedTransitionResult<C> proceedThenTrigger(String executionId, String event,
-                                                          C context, ExecutionSnapshot snapshot) {
-        StateMachineInstance<C> instance = definition.resume(context, snapshot, repository);
+                                                          C ctx, ExecutionSnapshot snapshot) {
+        StateMachineInstance<C> instance = definition.resume(ctx, snapshot, repository);
         String fromState = instance.currentState().name();
 
         try {
@@ -217,8 +217,8 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
      * Reconstitutes at currentStateName and fires the event.
      */
     private ManagedTransitionResult<C> reconstituteThenTrigger(String executionId, String event,
-                                                               C context, ExecutionSnapshot snapshot) {
-        StateMachineInstance<C> instance = definition.reconstitute(context, snapshot, repository);
+                                                               C ctx, ExecutionSnapshot snapshot) {
+        StateMachineInstance<C> instance = definition.reconstitute(ctx, snapshot, repository);
         String fromState = instance.currentState().name();
         return executeTrigger(instance, event, fromState, false);
     }
@@ -269,8 +269,8 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
                     "proceed() requires a FAILED snapshot. Current status: " + snapshot.getStatus());
         }
 
-        C context = resolveContext(executionId, contextOverride);
-        StateMachineInstance<C> instance = definition.resume(context, snapshot, repository);
+        C ctx = resolveContext(executionId, contextOverride);
+        StateMachineInstance<C> instance = definition.resume(ctx, snapshot, repository);
         String fromState = instance.currentState().name();
 
         try {
@@ -306,7 +306,7 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
             return contextLoader.apply(executionId);
         }
         throw new IllegalStateException(
-                "No context available for executionId '" + executionId + "'. " +
+                "No ctx available for executionId '" + executionId + "'. " +
                         "Either configure a contextLoader or pass a contextOverride.");
     }
 

@@ -27,10 +27,10 @@ public interface Action<C> {
     /**
      * Execute the action.
      *
-     * @param context the current machine context (read/write — actions may update it)
+     * @param ctx the current machine ctx (read/write — actions may update it)
      * @return the outcome; never return null (use ActionResult.success() for void actions)
      * @throws Exception any unexpected error; will be caught and wrapped by the library
      */
     @SuppressWarnings("java:S112")
-    ActionResult execute(C context) throws Exception;
+    ActionResult execute(C ctx) throws Exception;
 }

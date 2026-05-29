@@ -39,23 +39,23 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
     private final RetryCoordinator<C> retryCoordinator;
     private final EventBus<C> eventBus;
     private final int attemptNumber;
-    private final C context;
+    private final C ctx;
 
     private StateDefinition<C> currentState;
     private ExecutionStatus executionStatus;
 
     DefaultStateMachineInstance(StateMachineDefinition<C> definition,
                                 StateDefinition<C> initialState,
-                                C context,
+                                C ctx,
                                 SnapshotRepository snapshotRepository,
                                 RetryCoordinator<C> retryCoordinator,
                                 EventBus<C> eventBus) {
-        this(definition, initialState, context, UUID.randomUUID().toString(), snapshotRepository, retryCoordinator, eventBus);
+        this(definition, initialState, ctx, UUID.randomUUID().toString(), snapshotRepository, retryCoordinator, eventBus);
     }
 
     DefaultStateMachineInstance(StateMachineDefinition<C> definition,
                                 StateDefinition<C> initialState,
-                                C context,
+                                C ctx,
                                 String executionId,
                                 SnapshotRepository snapshotRepository,
                                 RetryCoordinator<C> retryCoordinator,
@@ -63,7 +63,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
         this.executionId = executionId;
         this.definition = definition;
         this.currentState = initialState;
-        this.context = context;
+        this.ctx = ctx;
         this.snapshotRepository = snapshotRepository;
         this.retryCoordinator = retryCoordinator;
         this.eventBus = eventBus != null ? eventBus : EventBus.empty();
@@ -79,7 +79,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
                 executionId, definition.id(), initialState.name()));
 
         if (!initialState.subSteps().isEmpty()) {
-            SubStepRunResult result = subStepRunner.run(initialState, context, executionRecord);
+            SubStepRunResult result = subStepRunner.run(initialState, ctx, executionRecord);
             if (result.isFailed()) {
                 handleFailure(initialState.name(), result.getFailedSubStepName(),
                         result.getError(), null);
@@ -97,7 +97,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
 
     DefaultStateMachineInstance(StateMachineDefinition<C> definition,
                                 StateDefinition<C> failedState,
-                                C context,
+                                C ctx,
                                 int attemptNumber,
                                 ExecutionRecord hydratedRecord,
                                 ExecutionStatus initialStatus,
@@ -107,7 +107,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
         this.executionId = hydratedRecord.getExecutionId();
         this.definition = definition;
         this.currentState = failedState;
-        this.context = context;
+        this.ctx = ctx;
         this.executionRecord = hydratedRecord;
         this.snapshotRepository = snapshotRepository;
         this.retryCoordinator = retryCoordinator;
@@ -130,7 +130,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
         TransitionDefinition<C> transition = definition.transitionsFrom(currentState.name())
                 .stream()
                 .filter(t -> t.event().equals(event))
-                .filter(t -> t.guard().map(g -> g.evaluate(context)).orElse(true))
+                .filter(t -> t.guard().map(g -> g.evaluate(ctx)).orElse(true))
                 .findFirst()
                 .orElseThrow(() -> new InvalidEventException(event, currentState.name()));
 
@@ -143,7 +143,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
 
         transition.action().ifPresent(action -> {
             try {
-                ActionResult r = action.execute(context);
+                ActionResult r = action.execute(ctx);
                 if (r != null && r.isFailed()) {
                     throw new StateMachineException("Transition action failed: " + r.getErrorMessage());
                 }
@@ -166,7 +166,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
                 executionId, definition.id(), nextState.name()));
 
         if (!nextState.subSteps().isEmpty()) {
-            SubStepRunResult runResult = subStepRunner.run(nextState, context, executionRecord);
+            SubStepRunResult runResult = subStepRunner.run(nextState, ctx, executionRecord);
             if (runResult.isFailed()) {
                 handleFailure(nextState.name(), runResult.getFailedSubStepName(),
                         runResult.getError(), event);
@@ -201,7 +201,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
         executionStatus = ExecutionStatus.RUNNING;
 
         if (!currentState.subSteps().isEmpty()) {
-            SubStepRunResult runResult = subStepRunner.run(currentState, context, executionRecord);
+            SubStepRunResult runResult = subStepRunner.run(currentState, ctx, executionRecord);
             if (runResult.isFailed()) {
                 handleFailure(currentState.name(), runResult.getFailedSubStepName(),
                         runResult.getError(), executionRecord.getLastTriggerEvent());
@@ -276,7 +276,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
     private void runEntryHook(StateDefinition<C> state) {
         state.hook().ifPresent(h -> {
             try {
-                h.onEntry(context);
+                h.onEntry(ctx);
             } catch (Exception e) {
                 throw new StateMachineException(
                         "onEntry hook failed for '" + state.name() + "': " + e.getMessage(), e);
@@ -287,7 +287,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
     private void runExitHook(StateDefinition<C> state) {
         state.hook().ifPresent(h -> {
             try {
-                h.onExit(context);
+                h.onExit(ctx);
             } catch (Exception e) {
                 throw new StateMachineException(
                         "onExit hook failed for '" + state.name() + "': " + e.getMessage(), e);
@@ -317,7 +317,7 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
 
     @Override
     public C context() {
-        return context;
+        return ctx;
     }
 
     @Override

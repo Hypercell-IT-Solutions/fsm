@@ -20,9 +20,9 @@ import java.util.function.Function;
  * 2. Load snapshot from repository
  * 3. Resolve context (from contextLoader or caller-supplied override)
  * 4. Branch on snapshot status:
- * No snapshot  → newInstance(context, executionId) → trigger(event)
- * RUNNING      → reconstitute(context, snapshot)   → trigger(event)
- * FAILED       → resume(context, snapshot)         → proceed() → trigger(event)
+ * No snapshot  → newInstance(ctx, executionId) → trigger(event)
+ * RUNNING      → reconstitute(ctx, snapshot)   → trigger(event)
+ * FAILED       → resume(ctx, snapshot)         → proceed() → trigger(event)
  * COMPLETED    → throw CompletedMachineException
  * 5. Checkpoint is saved internally by trigger() / proceed()
  * 6. Release lock
@@ -58,7 +58,7 @@ import java.util.function.Function;
 public interface StateMachineManager<C> {
 
     /**
-     * Process an event using the manager's configured contextLoader to supply context.
+     * Process an event using the manager's configured contextLoader to supply ctx.
      *
      * @param executionId your business entity ID (orderId, transactionId, etc.)
      * @param event       the event name from the incoming request
@@ -70,7 +70,7 @@ public interface StateMachineManager<C> {
      * for this call only. Useful when the context is already available in the request
      * (e.g. the HTTP request body contains the order data).
      *
-     * @param contextOverride the context to use; null falls back to the contextLoader
+     * @param contextOverride the ctx to use; null falls back to the contextLoader
      */
     ManagedTransitionResult<C> trigger(String executionId, String event, C contextOverride);
 

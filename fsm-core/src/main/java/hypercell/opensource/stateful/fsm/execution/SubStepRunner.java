@@ -35,7 +35,7 @@ public class SubStepRunner<C> {
         this.machineId = machineId;
     }
 
-    public SubStepRunResult run(StateDefinition<C> state, C context, ExecutionRecord executionRecord) {
+    public SubStepRunResult run(StateDefinition<C> state, C ctx, ExecutionRecord executionRecord) {
 
         for (SubStepDefinition<C> subStep : state.subSteps()) {
 
@@ -52,7 +52,7 @@ public class SubStepRunner<C> {
 
             ActionResult result;
             try {
-                result = subStep.action().execute(context);
+                result = subStep.action().execute(ctx);
                 if (result == null) {
                     result = ActionResult.failed(
                             "Action returned null — use ActionResult.success() for void actions");

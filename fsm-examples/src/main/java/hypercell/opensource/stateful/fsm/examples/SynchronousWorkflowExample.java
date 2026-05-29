@@ -24,7 +24,7 @@ import hypercell.opensource.stateful.fsm.exception.SubStepExecutionException;
 public class SynchronousWorkflowExample {
 
     // -------------------------------------------------------------------------
-    // Domain context
+    // Domain ctx
     // -------------------------------------------------------------------------
 
     static class OrderContext {

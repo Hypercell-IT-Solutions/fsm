@@ -108,7 +108,7 @@ public class StateBuilder<C> {
      *
      * @param name   stable snapshot key — treat like a DB column name; renaming breaks
      *               existing snapshots
-     * @param action the work to perform; may read and write the context
+     * @param action the work to perform; may read and write the ctx
      * @throws StateMachineConfigurationException if the name is a duplicate or contains {@code ::}
      */
     public StateBuilder<C> subStep(String name, Action<C> action) {

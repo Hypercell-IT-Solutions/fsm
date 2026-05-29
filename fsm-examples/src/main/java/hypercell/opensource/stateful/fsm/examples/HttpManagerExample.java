@@ -35,7 +35,7 @@ import java.util.concurrent.CountDownLatch;
 public class HttpManagerExample {
 
     // -------------------------------------------------------------------------
-    // Domain context
+    // Domain ctx
     // -------------------------------------------------------------------------
 
     static class OrderContext {
@@ -49,7 +49,7 @@ public class HttpManagerExample {
     }
 
     // -------------------------------------------------------------------------
-    // Simulated "database" — context loaded by executionId
+    // Simulated "database" — ctx loaded by executionId
     // In a real app this would be orderRepository.findById(id)
     // -------------------------------------------------------------------------
 
@@ -112,7 +112,7 @@ public class HttpManagerExample {
     // -------------------------------------------------------------------------
 
     public static void main(String[] args) throws InterruptedException {
-        // Seed the "database" — in a real app the context exists before the first event
+        // Seed the "database" — in a real app the ctx exists before the first event
         String orderId = "order-42";
         DB.put(orderId, new OrderContext(orderId));
 

@@ -91,14 +91,14 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
     }
 
     @Override
-    public StateMachineInstance<C> newInstance(C context) {
+    public StateMachineInstance<C> newInstance(C ctx) {
         return new DefaultStateMachineInstance<>(
-                this, initialState, context, snapshotRepository, retryCoordinator, eventBus);
+                this, initialState, ctx, snapshotRepository, retryCoordinator, eventBus);
     }
 
     @Override
-    public StateMachineInstance<C> newInstance(C context, String executionId) {
-        return new DefaultStateMachineInstance<>(this, initialState, context, executionId,
+    public StateMachineInstance<C> newInstance(C ctx, String executionId) {
+        return new DefaultStateMachineInstance<>(this, initialState, ctx, executionId,
                 snapshotRepository, retryCoordinator, eventBus);
     }
 
@@ -113,12 +113,12 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
     }
 
     @Override
-    public StateMachineInstance<C> reconstitute(C context, ExecutionSnapshot snapshot) {
-        return reconstitute(context, snapshot, snapshotRepository);
+    public StateMachineInstance<C> reconstitute(C ctx, ExecutionSnapshot snapshot) {
+        return reconstitute(ctx, snapshot, snapshotRepository);
     }
 
     @Override
-    public StateMachineInstance<C> reconstitute(C context, ExecutionSnapshot snapshot, SnapshotRepository repository) {
+    public StateMachineInstance<C> reconstitute(C ctx, ExecutionSnapshot snapshot, SnapshotRepository repository) {
         StateDefinition<C> currentState = stateByName(snapshot.getCurrentStateName());
 
         ExecutionRecord executionRecord = new ExecutionRecord(snapshot.getExecutionId(), snapshot.getCurrentStateName());
@@ -132,17 +132,17 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
             repository.save(snapshot.getExecutionId(), snapshot.withStatus(SnapshotStatus.RUNNING));
         }
 
-        return new DefaultStateMachineInstance<>(this, currentState, context, snapshot.getAttemptNumber(),
+        return new DefaultStateMachineInstance<>(this, currentState, ctx, snapshot.getAttemptNumber(),
                 executionRecord, ExecutionStatus.RUNNING, repository, retryCoordinator, eventBus);
     }
 
     @Override
-    public StateMachineInstance<C> resume(C context, ExecutionSnapshot snapshot) {
-        return resume(context, snapshot, snapshotRepository);
+    public StateMachineInstance<C> resume(C ctx, ExecutionSnapshot snapshot) {
+        return resume(ctx, snapshot, snapshotRepository);
     }
 
     @Override
-    public StateMachineInstance<C> resume(C context, ExecutionSnapshot snapshot,
+    public StateMachineInstance<C> resume(C ctx, ExecutionSnapshot snapshot,
                                           SnapshotRepository repository) {
         StateDefinition<C> failedState = stateByName(snapshot.getFailedStateName());
         ExecutionRecord hydratedRecord = hydrateRecord(snapshot);
@@ -152,7 +152,7 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
         }
 
         return new DefaultStateMachineInstance<>(
-                this, failedState, context, snapshot.getAttemptNumber(), hydratedRecord,
+                this, failedState, ctx, snapshot.getAttemptNumber(), hydratedRecord,
                 ExecutionStatus.FAILED, repository != null ? repository : snapshotRepository, retryCoordinator,
                 eventBus);
     }
