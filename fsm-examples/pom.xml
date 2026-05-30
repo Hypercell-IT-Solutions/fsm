@@ -15,6 +15,10 @@
     <name>FSM Examples</name>
     <description>Runnable examples for fsm-core. Not published as a library artifact.</description>
 
+    <properties>
+        <mvn.deploy.skip>true</mvn.deploy.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>hypercell.opensource.stateful.fsm</groupId>
