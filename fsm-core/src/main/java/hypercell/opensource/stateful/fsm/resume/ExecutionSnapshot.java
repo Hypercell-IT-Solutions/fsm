@@ -18,19 +18,20 @@ import java.util.stream.Collectors;
  * instance positioned at the failure point.
  * <p>
  * KEY DESIGN DECISION — WHAT TO STORE:
- * We store only the COMPLETED sub-step results (not the failed ones), because:
+ * We store only the COMPLETED sub-step results of the current state (not the failed ones), because:
  * - Completed steps are what we want to SKIP on resume
  * - The failed step will be re-executed, so we don't need its old result
- * - This keeps the snapshot minimal
+ * - When resuming, you only care about the current state's completed steps
+ * - Prior states are never revisited, so their step history is not needed for recovery
  * <p>
  * SERIALIZATION:
  * This class is designed to be easily serialized to JSON or any other format.
  * All fields are either primitives, Strings, Instants, or Maps of those types.
  * The SnapshotRepository implementation handles the actual serialization.
  * <p>
- * The composite key format for completedSubStepResults is "stateName::subStepName".
- * This separator (::) must not appear in state or sub-step names — the builder
- * validates this.
+ * The composite key format for completedSubStepResults is just the sub-step name
+ * (e.g., "validateOrder", "processPayment"), since each snapshot contains only
+ * one state's completed steps.
  */
 public class ExecutionSnapshot {
 
@@ -244,10 +245,10 @@ public class ExecutionSnapshot {
 
     /**
      * Check whether a specific sub-step was completed and recorded in this snapshot.
-     * Key format: "stateName::subStepName"
+     * Key format: just the sub-step name (e.g., "validateOrder").
      */
-    public boolean isSubStepCompleted(String stateName, String subStepName) {
-        return completedSubStepResults.containsKey(stateName + "::" + subStepName);
+    public boolean isSubStepCompleted(String subStepName) {
+        return completedSubStepResults.containsKey(subStepName);
     }
 
     /**

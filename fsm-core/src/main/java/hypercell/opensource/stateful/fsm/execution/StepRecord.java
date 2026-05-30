@@ -49,9 +49,10 @@ public final class StepRecord {
 
     /**
      * Composite key used to look up this record in a snapshot.
+     * Since snapshots store only the current state's steps, the key is just the sub-step name.
      */
     public String compositeKey() {
-        return stateName + "::" + subStepName;
+        return subStepName;
     }
 
     @Override
