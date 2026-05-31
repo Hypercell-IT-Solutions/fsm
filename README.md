@@ -31,7 +31,7 @@ Define your workflow once as a type-safe state machine. Run it synchronously in 
 
 ```xml
 <dependency>
-    <groupId>hypercell.opensource.stateful.fsm</groupId>
+    <groupId>io.hypercell</groupId>
     <artifactId>fsm-core</artifactId>
     <version>1.0.0-beta</version>
 </dependency>

@@ -4,7 +4,7 @@ Complete reference for all public types. Grouped by package.
 
 ---
 
-## Entry point — `hypercell.opensource.stateful.fsm`
+## Entry point — `io.hypercell.fsm`
 
 ### `StateMachine`
 
@@ -56,7 +56,7 @@ static <C> MachineEventListener<C> loggingListener(String prefix)
 
 ---
 
-## Core interfaces — `hypercell.opensource.stateful.fsm.core`
+## Core interfaces — `io.hypercell.fsm.core`
 
 ### `StateMachineDefinition<C>`
 
@@ -298,7 +298,7 @@ Register via `StateBuilder.subStep(SubStepHandler<C>)`.
 
 ---
 
-## Builders — `hypercell.opensource.stateful.fsm.builder`
+## Builders — `io.hypercell.fsm.builder`
 
 ### `StateMachineBuilder<C>`
 
@@ -354,7 +354,7 @@ StateBuilder<C> end()                            // close transition, return to 
 
 ---
 
-## Listeners — `hypercell.opensource.stateful.fsm.listener`
+## Listeners — `io.hypercell.fsm.listener`
 
 ### `MachineEventListener<C>`
 
@@ -394,7 +394,7 @@ Each event type carries `executionId()`, `machineId()`, and `occurredAt()`. Addi
 
 ---
 
-## Manager — `hypercell.opensource.stateful.fsm.manager`
+## Manager — `io.hypercell.fsm.manager`
 
 ### `StateMachineManager<C>`
 
@@ -521,7 +521,7 @@ See [Persistence — Context on resume](05-persistence-and-retry.md#context-on-r
 
 ---
 
-## Persistence — `hypercell.opensource.stateful.fsm.resume`
+## Persistence — `io.hypercell.fsm.resume`
 
 ### `SnapshotRepository`
 
@@ -585,7 +585,7 @@ Custom implementations can add additional skip logic (e.g. always re-run certain
 
 ---
 
-## JDBC persistence — `hypercell.opensource.stateful.fsm.jdbc`
+## JDBC persistence — `io.hypercell.fsm.jdbc`
 
 ### `JdbcSnapshotRepository`
 
@@ -635,7 +635,7 @@ See [Persistence & retry — JdbcSnapshotRepository](05-persistence-and-retry.md
 
 ---
 
-## Retry — `hypercell.opensource.stateful.fsm.retry`
+## Retry — `io.hypercell.fsm.retry`
 
 ### `RetryPolicy`
 
@@ -663,7 +663,7 @@ Built-in implementation: `ThreadPoolRetryScheduler`.
 
 ---
 
-## Exceptions — `hypercell.opensource.stateful.fsm.exception`
+## Exceptions — `io.hypercell.fsm.exception`
 
 | Exception | When thrown |
 |---|---|

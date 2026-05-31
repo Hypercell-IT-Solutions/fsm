@@ -10,7 +10,7 @@ If you want a concepts primer first, read [Concepts](01-concepts.md).
 
 ```xml
 <dependency>
-    <groupId>hypercell.opensource.stateful.fsm</groupId>
+    <groupId>io.hypercell</groupId>
     <artifactId>fsm-core</artifactId>
     <version>1.0.0-beta</version>
 </dependency>
@@ -47,9 +47,9 @@ public class OrderContext {
 All configuration starts from `StateMachine.define(id)`. The id is a stable identifier for this machine *type* (not a specific execution).
 
 ```java
-import hypercell.opensource.stateful.fsm.StateMachine;
-import hypercell.opensource.stateful.fsm.core.ActionResult;
-import hypercell.opensource.stateful.fsm.core.StateMachineDefinition;
+import io.hypercell.fsm.StateMachine;
+import io.hypercell.fsm.core.ActionResult;
+import io.hypercell.fsm.core.StateMachineDefinition;
 
 StateMachineDefinition<OrderContext> orderMachine = StateMachine.<OrderContext>define("order-workflow")
     .initial("PENDING")
@@ -101,7 +101,7 @@ A `StateMachineConfigurationException` is thrown at `build()` time for any viola
 ## 4. Create and run an instance
 
 ```java
-import hypercell.opensource.stateful.fsm.core.StateMachineInstance;
+import io.hypercell.fsm.core.StateMachineInstance;
 
 OrderContext ctx = new OrderContext("order-42");
 StateMachineInstance<OrderContext> instance = orderMachine.newInstance(ctx);
@@ -197,8 +197,8 @@ System.out.println(instance.status()); // COMPLETED
 The logging listener writes a structured line for every event. For custom behaviour (metrics, audit trail, webhooks), implement `MachineEventListener<C>`:
 
 ```java
-import hypercell.opensource.stateful.fsm.listener.MachineEventListener;
-import hypercell.opensource.stateful.fsm.listener.MachineEvent.*;
+import io.hypercell.fsm.listener.MachineEventListener;
+import io.hypercell.fsm.listener.MachineEvent.*;
 
 MachineEventListener<OrderContext> auditListener = new MachineEventListener<>() {
     @Override

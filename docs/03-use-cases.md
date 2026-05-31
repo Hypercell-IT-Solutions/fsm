@@ -1,19 +1,19 @@
 # Use cases
 
 Practical recipes for common integration patterns. Runnable examples live in the
-[`fsm-examples`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/)
+[`fsm-examples`](../fsm-examples/src/main/java/io/hypercell/fsm/examples/)
 module (separate from the library JAR, includes Logback for visible log output):
 
 | Example class | Covers |
 |---|---|
-| [`SynchronousWorkflowExample`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/SynchronousWorkflowExample.java) | Direct `newInstance` + `trigger`, failure, `proceed()`, sub-step skip |
-| [`HttpManagerExample`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/HttpManagerExample.java) | `StateMachineManager`, contextLoader, 409/concurrent, completed-machine guard, `initialize()` |
-| [`FileSnapshotRetryExample`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/FileSnapshotRetryExample.java) | `FileSnapshotRepository`, failure→snapshot→restart→manual retry, smart contextLoader |
+| [`SynchronousWorkflowExample`](../fsm-examples/src/main/java/io/hypercell/fsm/examples/SynchronousWorkflowExample.java) | Direct `newInstance` + `trigger`, failure, `proceed()`, sub-step skip |
+| [`HttpManagerExample`](../fsm-examples/src/main/java/io/hypercell/fsm/examples/HttpManagerExample.java) | `StateMachineManager`, contextLoader, 409/concurrent, completed-machine guard, `initialize()` |
+| [`FileSnapshotRetryExample`](../fsm-examples/src/main/java/io/hypercell/fsm/examples/FileSnapshotRetryExample.java) | `FileSnapshotRepository`, failure→snapshot→restart→manual retry, smart contextLoader |
 | `JdbcSnapshotExample` | `JdbcSnapshotRepository`, distributed persistence, multi-replica setup |
 
 Run any example with:
 ```
-mvn -pl fsm-examples compile exec:java -Dexec.mainClass=hypercell.opensource.stateful.fsm.examples.<ClassName>
+mvn -pl fsm-examples compile exec:java -Dexec.mainClass=io.hypercell.fsm.examples.<ClassName>
 ```
 
 ---
@@ -431,7 +431,7 @@ See [JDBC & Spring Boot autoconfiguration](08-jdbc-and-spring-boot.md) for a com
 
 ```xml
 <dependency>
-    <groupId>hypercell.opensource.stateful.fsm</groupId>
+    <groupId>io.hypercell</groupId>
     <artifactId>fsm-spring-boot-starter-jdbc</artifactId>
     <version>1.0.0-beta</version>
 </dependency>

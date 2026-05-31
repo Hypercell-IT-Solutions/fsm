@@ -10,7 +10,7 @@ For Spring Boot applications, the `fsm-spring-boot-starter-jdbc` module provides
 
 ```xml
 <dependency>
-    <groupId>hypercell.opensource.stateful.fsm</groupId>
+    <groupId>io.hypercell</groupId>
     <artifactId>fsm-spring-boot-starter-jdbc</artifactId>
     <version>1.0.0-beta</version>
 </dependency>

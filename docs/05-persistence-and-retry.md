@@ -163,7 +163,7 @@ For production deployments across multiple JVMs, use `JdbcSnapshotRepository`. I
 **Dependency:**
 ```xml
 <dependency>
-    <groupId>hypercell.opensource.stateful.fsm</groupId>
+    <groupId>io.hypercell</groupId>
     <artifactId>fsm-jdbc</artifactId>
     <version>1.0.0-beta</version>
 </dependency>

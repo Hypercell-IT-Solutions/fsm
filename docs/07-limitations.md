@@ -110,7 +110,7 @@ objects can contain.
 
 **Workaround:** Document and enforce the "smart context loading" pattern — see
 [Persistence & retry — Context on resume](05-persistence-and-retry.md#context-on-resume)
-and [`FileSnapshotRetryExample`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/FileSnapshotRetryExample.java).
+and [`FileSnapshotRetryExample`](../fsm-examples/src/main/java/io/hypercell/fsm/examples/FileSnapshotRetryExample.java).
 
 **Future option:** Offer an opt-in `ContextSerializer<C>` interface. When configured,
 the library serializes the context into the snapshot. When absent (default), the current

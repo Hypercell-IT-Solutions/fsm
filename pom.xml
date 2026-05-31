@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>hypercell.opensource.stateful.fsm</groupId>
+    <groupId>io.hypercell</groupId>
     <artifactId>fsm-library</artifactId>
     <version>1.0.0-beta</version>
     <packaging>pom</packaging>
@@ -39,7 +39,7 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>hypercell.opensource.stateful.fsm</groupId>
+                <groupId>io.hypercell</groupId>
                 <artifactId>fsm-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
