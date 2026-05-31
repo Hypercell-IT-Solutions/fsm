@@ -4,7 +4,7 @@ A Java 17 library for building **stateful, resumable finite state machines**.
 
 Define your workflow once as a type-safe state machine. Run it synchronously in a single process, or drive it across multiple HTTP requests with full failure recovery and automatic retry — without writing any of the orchestration plumbing yourself.
 
-> **Status:** 1.0.0-beta — public API is stable but may see minor changes before 1.0.0 GA.
+> **Status:** 1.0.x-beta — public API is stable but may see minor changes before 1.0.0 GA.
 
 ---
 
