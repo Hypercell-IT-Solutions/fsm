@@ -1,11 +1,11 @@
 package hypercell.opensource.stateful.fsm.manager;
 
+import hypercell.opensource.stateful.fsm.core.ContextLoader;
 import hypercell.opensource.stateful.fsm.core.StateMachineDefinition;
 import hypercell.opensource.stateful.fsm.resume.ExecutionSnapshot;
 import hypercell.opensource.stateful.fsm.resume.SnapshotRepository;
 
 import java.util.Optional;
-import java.util.function.Function;
 
 /**
  * Orchestrates the full request lifecycle for HTTP-driven state machine workflows.
@@ -43,9 +43,8 @@ import java.util.function.Function;
  * @Bean
  * public StateMachineManager<OrderContext> orderMachineManager(
  *         StateMachineDefinition<OrderContext> definition,
- *         SnapshotRepository repository,
- *         OrderService orderService) {
- *     return definition.newManager(repository, id -> orderService.loadContext(id));
+ *         SnapshotRepository repository) {
+ *     return definition.newManager(repository);
  * }
  *
  * // In your controller:
@@ -106,12 +105,25 @@ public interface StateMachineManager<C> {
     void recoverPendingRetries();
 
     /**
+     * Create a new manager with a different context loader.
+     * Useful when the definition's context loader doesn't fit your use case,
+     * but you don't want to pass contextOverride on every trigger/proceed call.
+     * <p>
+     * The returned manager delegates to this one for all operations
+     * except context loading.
+     *
+     * @param contextLoader the context loader to use instead of the definition's
+     * @return a new manager bound to the provided context loader
+     */
+    StateMachineManager<C> withContextLoader(ContextLoader<C> contextLoader);
+
+    /**
      * The only way to create a StateMachineManager.
      * Keeps DefaultStateMachineManager invisible to consumers.
+     * Uses the context loader from the definition.
      */
     static <C> StateMachineManager<C> create(StateMachineDefinition<C> definition,
-                                             SnapshotRepository repository,
-                                             Function<String, C> contextLoader) {
-        return new DefaultStateMachineManager<>(definition, repository, contextLoader);
+                                             SnapshotRepository repository) {
+        return new DefaultStateMachineManager<>(definition, repository, definition.contextLoader());
     }
 }

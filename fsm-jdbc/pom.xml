@@ -13,6 +13,7 @@
 
     <artifactId>fsm-jdbc</artifactId>
     <name>FSM JDBC</name>
+    <description>JDBC-based snapshot repository for distributed FSM deployments. Supports PostgreSQL, MySQL, MariaDB, H2, SQLite, and Oracle with automatic schema creation and optimistic locking.</description>
 
     <dependencies>
         <dependency>
@@ -40,6 +41,32 @@
                     <source>${mvn.compiler.source}</source>
                     <target>${mvn.compiler.target}</target>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

@@ -66,6 +66,7 @@ public class HttpManagerExample {
                     .initial("PENDING")
                     .listener(StateMachine.loggingListener("[ORDER]"))
                     .snapshotRepository(REPOSITORY)
+                    .contextLoader(id -> DB.get(id))
 
                     .state("PENDING")
                         .on("APPROVE").to("PROCESSING").end()
@@ -88,9 +89,8 @@ public class HttpManagerExample {
                     .state("CANCELLED").terminal().and()
                     .build();
 
-    // contextLoader: how to reload a fresh OrderContext given only the executionId
     static final StateMachineManager<OrderContext> MANAGER =
-            StateMachine.manager(DEFINITION, REPOSITORY, id -> DB.get(id));
+            StateMachine.manager(DEFINITION, REPOSITORY);
 
     // -------------------------------------------------------------------------
     // Helpers
@@ -148,6 +148,7 @@ public class HttpManagerExample {
                     StateMachine.<OrderContext>define("slow-workflow")
                             .initial("START")
                             .snapshotRepository(InMemorySnapshotRepository.create())
+                            .contextLoader(id -> DB.get(id))
                             .state("START")
                                 .subStep("slow-step", ctx -> {
                                     firstHoldsLock.countDown();       // signal: lock is held
@@ -162,7 +163,7 @@ public class HttpManagerExample {
             String concurrentId = "order-99";
             DB.put(concurrentId, new OrderContext(concurrentId));
             StateMachineManager<OrderContext> slowManager =
-                    StateMachine.manager(slowDef, InMemorySnapshotRepository.create(), id -> DB.get(id));
+                    StateMachine.manager(slowDef, InMemorySnapshotRepository.create());
 
             Thread t1 = new Thread(() -> slowManager.trigger(concurrentId, "GO"));
             Thread t2 = new Thread(() -> {

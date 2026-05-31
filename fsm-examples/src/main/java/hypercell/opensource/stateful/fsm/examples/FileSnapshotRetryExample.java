@@ -160,7 +160,7 @@ public class FileSnapshotRetryExample {
                             .build();
 
             StateMachineManager<OrderContext> manager =
-                    StateMachine.manager(definition, repository, id -> loadContext(id));
+                    StateMachine.manager(definition, repository);
 
             System.out.println("\n--- Triggering APPROVE ---");
             ManagedTransitionResult<OrderContext> r = manager.trigger(orderId, "APPROVE",
@@ -217,7 +217,7 @@ public class FileSnapshotRetryExample {
                             .build();
 
             StateMachineManager<OrderContext> manager =
-                    StateMachine.manager(definition, repository, id -> loadContext(id));
+                    StateMachine.manager(definition, repository);
 
             System.out.println("\n--- Manual retry: manager.proceed(orderId) ---");
             System.out.println("Expected: reserve-stock SKIPPED, charge-payment runs, send-confirmation runs\n");

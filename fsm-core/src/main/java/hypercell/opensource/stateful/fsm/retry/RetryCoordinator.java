@@ -1,9 +1,11 @@
 package hypercell.opensource.stateful.fsm.retry;
 
+import hypercell.opensource.stateful.fsm.core.ContextLoader;
 import hypercell.opensource.stateful.fsm.core.StateMachineDefinition;
 import hypercell.opensource.stateful.fsm.core.StateMachineInstance;
 import hypercell.opensource.stateful.fsm.exception.ConcurrentRetryException;
 import hypercell.opensource.stateful.fsm.exception.RetryException;
+import hypercell.opensource.stateful.fsm.exception.StateMachineException;
 import hypercell.opensource.stateful.fsm.resume.ExecutionSnapshot;
 import hypercell.opensource.stateful.fsm.resume.SnapshotRepository;
 import hypercell.opensource.stateful.fsm.resume.SnapshotStatus;
@@ -11,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.util.function.Function;
 
 /**
  * Orchestrates the full failure-and-retry lifecycle.
@@ -52,17 +53,17 @@ public class RetryCoordinator<C> {
     /**
      * Loads a fresh context for retry attempts.
      * The original context object may be stale (it was created for the first run).
-     * This function is called with the executionId and should return a fresh ctx.
+     * This loader is called with the executionId and should return a fresh ctx.
      * <p>
      * Example: executionId → orderService.loadOrderContext(executionId)
      */
-    private final Function<String, C> contextLoader;
+    private final ContextLoader<C> contextLoader;
 
     public RetryCoordinator(RetryPolicy retryPolicy,
                             RetryScheduler retryScheduler,
                             SnapshotRepository repository,
                             StateMachineDefinition<C> definition,
-                            Function<String, C> contextLoader) {
+                            ContextLoader<C> contextLoader) {
         this.retryPolicy = retryPolicy;
         this.retryScheduler = retryScheduler;
         this.repository = repository;
@@ -158,7 +159,7 @@ public class RetryCoordinator<C> {
         repository.save(executionId, snapshot.withStatus(SnapshotStatus.RUNNING));
 
         try {
-            C ctx = contextLoader.apply(executionId);
+            C ctx = contextLoader.load(executionId);
 
             StateMachineInstance<C> resumed = definition.resume(ctx, snapshot, repository);
 

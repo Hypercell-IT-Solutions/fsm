@@ -13,7 +13,6 @@ import hypercell.opensource.stateful.fsm.retry.RetryCoordinator;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * The validated, immutable state machine blueprint.
@@ -34,6 +33,7 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
     private final SnapshotRepository snapshotRepository;
     private final RetryCoordinator<C> retryCoordinator;
     private final EventBus<C> eventBus;
+    private final ContextLoader<C> contextLoader;
 
     public DefaultStateMachineDefinition(String id,
                                          StateDefinition<C> initialState,
@@ -42,7 +42,8 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
                                          ResumePolicy<C> resumePolicy,
                                          SnapshotRepository snapshotRepository,
                                          RetryCoordinator<C> retryCoordinator,
-                                         EventBus<C> eventBus) {
+                                         EventBus<C> eventBus,
+                                         ContextLoader<C> contextLoader) {
         this.id = id;
         this.initialState = initialState;
         this.states = Collections.unmodifiableMap(states);
@@ -51,6 +52,7 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
         this.snapshotRepository = snapshotRepository;
         this.retryCoordinator = retryCoordinator;
         this.eventBus = eventBus != null ? eventBus : EventBus.empty();
+        this.contextLoader = contextLoader;
     }
 
     @Override
@@ -79,6 +81,11 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
     }
 
     @Override
+    public ContextLoader<C> contextLoader() {
+        return contextLoader;
+    }
+
+    @Override
     public StateDefinition<C> stateByName(String name) {
         StateDefinition<C> s = states.get(name);
         if (s == null) throw new InvalidStateException(name);
@@ -103,13 +110,13 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
     }
 
     @Override
-    public StateMachineManager<C> newManager(Function<String, C> contextLoader) {
-        return newManager(snapshotRepository, contextLoader);
+    public StateMachineManager<C> newManager() {
+        return newManager(snapshotRepository);
     }
 
     @Override
-    public StateMachineManager<C> newManager(SnapshotRepository repository, Function<String, C> contextLoader) {
-        return StateMachineManager.create(this, repository, contextLoader);
+    public StateMachineManager<C> newManager(SnapshotRepository repository) {
+        return StateMachineManager.create(this, repository);
     }
 
     @Override

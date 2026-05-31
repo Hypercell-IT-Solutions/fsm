@@ -1,11 +1,13 @@
 package hypercell.opensource.stateful.fsm.manager;
 
+import hypercell.opensource.stateful.fsm.core.ContextLoader;
 import hypercell.opensource.stateful.fsm.core.ExecutionStatus;
 import hypercell.opensource.stateful.fsm.core.StateMachineDefinition;
 import hypercell.opensource.stateful.fsm.core.StateMachineInstance;
 import hypercell.opensource.stateful.fsm.exception.CompletedMachineException;
 import hypercell.opensource.stateful.fsm.exception.ConcurrentExecutionException;
 import hypercell.opensource.stateful.fsm.exception.SubStepExecutionException;
+import hypercell.opensource.stateful.fsm.exception.StateMachineException;
 import hypercell.opensource.stateful.fsm.resume.ExecutionSnapshot;
 import hypercell.opensource.stateful.fsm.resume.SnapshotRepository;
 import hypercell.opensource.stateful.fsm.resume.SnapshotStatus;
@@ -21,7 +23,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Function;
 
 /**
  * Default implementation of StateMachineManager.
@@ -49,13 +50,13 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
 
     private final StateMachineDefinition<C> definition;
     private final SnapshotRepository repository;
-    private final Function<String, C> contextLoader;
+    private final ContextLoader<C> contextLoader;
     private final ConcurrentHashMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
     private final ScheduledExecutorService recoveryExecutor;
 
     DefaultStateMachineManager(StateMachineDefinition<C> definition,
                                SnapshotRepository repository,
-                               Function<String, C> contextLoader) {
+                               ContextLoader<C> contextLoader) {
         this.definition = definition;
         this.repository = repository;
         this.contextLoader = contextLoader;
@@ -99,6 +100,11 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
     @Override
     public Optional<ExecutionSnapshot> snapshotOf(String executionId) {
         return repository.load(executionId);
+    }
+
+    @Override
+    public StateMachineManager<C> withContextLoader(ContextLoader<C> contextLoader) {
+        return new DefaultStateMachineManager<>(definition, repository, contextLoader);
     }
 
     @Override
@@ -297,13 +303,23 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
      * Resolves the context for this request.
      * If contextOverride is provided, use it directly.
      * Otherwise, delegate to the manager's configured contextLoader.
+     * <p>
+     * Checked exceptions from the context loader are wrapped in StateMachineException;
+     * unchecked exceptions are propagated as-is.
      */
     private C resolveContext(String executionId, C contextOverride) {
         if (contextOverride != null) {
             return contextOverride;
         }
         if (contextLoader != null) {
-            return contextLoader.apply(executionId);
+            try {
+                return contextLoader.load(executionId);
+            } catch (RuntimeException | Error e) {
+                throw e;
+            } catch (Exception e) {
+                throw new StateMachineException(
+                        "Failed to load context for executionId '" + executionId + "'", e);
+            }
         }
         throw new IllegalStateException(
                 "No ctx available for executionId '" + executionId + "'. " +

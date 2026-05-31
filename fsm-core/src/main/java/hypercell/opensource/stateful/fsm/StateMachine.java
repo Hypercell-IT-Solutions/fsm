@@ -40,25 +40,27 @@ public final class StateMachine {
 
     /**
      * Convenience factory for StateMachineManager.
-     * Equivalent to: definition.newManager(repository, contextLoader)
+     * Equivalent to: definition.newManager(repository)
+     * <p>
      * Use when events arrive across multiple HTTP requests, the process may restart between requests.
+     * The context loader must be configured on the definition via {@code .contextLoader(...)}.
      * <p>
      * The manager handles: load snapshot -> reconstruct -> execute -> save, concurrency protection,
      * and auto-retry of failed sub-steps.
      */
     public static <C> StateMachineManager<C> manager(StateMachineDefinition<C> definition,
-                                                     SnapshotRepository repository,
-                                                     Function<String, C> contextLoader) {
-        return definition.newManager(repository, contextLoader);
+                                                     SnapshotRepository repository) {
+        return definition.newManager(repository);
     }
 
     /**
-     * Convenience factory for StateMachineManager.
-     * Equivalent to: definition.newManager(repository, contextLoader)
+     * Convenience factory for StateMachineManager using the definition's repository.
+     * Equivalent to: definition.newManager()
+     * <p>
+     * The context loader must be configured on the definition via {@code .contextLoader(...)}.
      */
-    public static <C> StateMachineManager<C> manager(StateMachineDefinition<C> definition,
-                                                     Function<String, C> contextLoader) {
-        return definition.newManager(definition.repository(), contextLoader);
+    public static <C> StateMachineManager<C> manager(StateMachineDefinition<C> definition) {
+        return definition.newManager();
     }
 
     /**

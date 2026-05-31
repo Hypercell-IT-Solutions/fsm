@@ -51,7 +51,7 @@ public class StateMachineBuilder<C> {
     private SnapshotRepository snapshotRepository = null;
     private RetryPolicy retryPolicy = NoAutoRetryPolicy.INSTANCE;
     private RetryScheduler retryScheduler = null;
-    private Function<String, C> contextLoader = null;
+    private ContextLoader<C> contextLoader = null;
 
     public StateMachineBuilder(String id) {
         this.id = id;
@@ -99,7 +99,7 @@ public class StateMachineBuilder<C> {
     }
 
     /**
-     * Set the function that loads a fresh context for a given execution ID.
+     * Set the loader that restores a fresh context for a given execution ID.
      * Called by the retry coordinator before each auto-retry attempt, and by
      * the manager on every request.
      * <p>
@@ -109,9 +109,12 @@ public class StateMachineBuilder<C> {
      * <a href="https://github.com/hypercell/fsm-library/blob/main/docs/05-persistence-and-retry.md#ctx-on-resume">Context on resume</a>
      * documentation.
      * <p>
+     * Implementations may throw checked exceptions (e.g., database errors) without
+     * wrapping them in {@code RuntimeException}.
+     * <p>
      * Required when using any retry policy other than {@link NoAutoRetryPolicy}.
      */
-    public StateMachineBuilder<C> contextLoader(Function<String, C> l) {
+    public StateMachineBuilder<C> contextLoader(ContextLoader<C> l) {
         contextLoader = l;
         return this;
     }
@@ -218,7 +221,7 @@ public class StateMachineBuilder<C> {
 
         DefaultStateMachineDefinition<C> def = new DefaultStateMachineDefinition<>(
                 id, stateMap.get(initialStateName), stateMap, transitionMap,
-                resumePolicy, snapshotRepository, coordinator, bus);
+                resumePolicy, snapshotRepository, coordinator, bus, contextLoader);
         ref.set(def);
         return def;
     }
@@ -266,6 +269,11 @@ public class StateMachineBuilder<C> {
         }
 
         @Override
+        public ContextLoader<C> contextLoader() {
+            return d.contextLoader();
+        }
+
+        @Override
         public StateMachineInstance<C> newInstance(C c) {
             return d.newInstance(c);
         }
@@ -276,13 +284,13 @@ public class StateMachineBuilder<C> {
         }
 
         @Override
-        public StateMachineManager<C> newManager(Function<String, C> contextLoader) {
-            return d.newManager(contextLoader);
+        public StateMachineManager<C> newManager() {
+            return d.newManager();
         }
 
         @Override
-        public StateMachineManager<C> newManager(SnapshotRepository repository, Function<String, C> contextLoader) {
-            return d.newManager(repository, contextLoader);
+        public StateMachineManager<C> newManager(SnapshotRepository repository) {
+            return d.newManager(repository);
         }
 
         @Override

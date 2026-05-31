@@ -7,7 +7,6 @@ import hypercell.opensource.stateful.fsm.resume.SnapshotRepository;
 import hypercell.opensource.stateful.fsm.retry.RetryCoordinator;
 
 import java.util.List;
-import java.util.function.Function;
 
 /**
  * The immutable, validated blueprint of a state machine.
@@ -61,6 +60,13 @@ public interface StateMachineDefinition<C> {
     RetryCoordinator<C> retryCoordinator();
 
     /**
+     * The context loader configured at build time, or {@code null} if none was set.
+     * Restores a fresh context from the given executionId. Used by the manager
+     * on every request and by the retry coordinator on auto-retries.
+     */
+    ContextLoader<C> contextLoader();
+
+    /**
      * Create a fresh instance starting at the initial state.
      * A UUID is generated as the execution ID (used as the snapshot key).
      *
@@ -79,23 +85,26 @@ public interface StateMachineDefinition<C> {
     StateMachineInstance<C> newInstance(C ctx, String executionId);
 
     /**
-     * Create a {@link StateMachineManager} bound to this definition's repository.
-     * Equivalent to {@code newManager(definition.repository(), contextLoader)}.
-     *
-     * @param contextLoader how to load a fresh ctx given an executionId
+     * Create a {@link StateMachineManager} bound to this definition's repository
+     * and context loader.
+     * <p>
+     * The context loader is inherited from the definition (set via {@link #contextLoader()}).
+     * If no context loader was configured on the definition, it must be supplied to every
+     * {@code trigger()} or {@code proceed()} call via the {@code contextOverride} parameter.
      */
-    StateMachineManager<C> newManager(Function<String, C> contextLoader);
+    StateMachineManager<C> newManager();
 
     /**
      * Create a {@link StateMachineManager} with an explicit repository.
      * Use this when you want the manager to use a different repository than the one
      * set on the definition (e.g. a production DB repo vs. the in-memory one used
      * during definition-time testing).
+     * <p>
+     * The context loader is inherited from the definition.
      *
-     * @param repository    where snapshots are stored and loaded
-     * @param contextLoader how to load a fresh ctx given an executionId
+     * @param repository where snapshots are stored and loaded
      */
-    StateMachineManager<C> newManager(SnapshotRepository repository, Function<String, C> contextLoader);
+    StateMachineManager<C> newManager(SnapshotRepository repository);
 
     /**
      * Restore a {@code RUNNING} instance from a checkpoint snapshot.
