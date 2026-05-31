@@ -63,13 +63,21 @@ static <C> MachineEventListener<C> loggingListener(String prefix)
 Immutable blueprint of a state machine. Thread-safe; share freely.
 
 ```java
+// Identity and lookup
 String id()
 StateDefinition<C> initialState()
 StateDefinition<C> stateByName(String name)
 List<TransitionDefinition<C>> transitionsFrom(String stateName)
+
+// Configuration
 SnapshotRepository repository()
+ContextLoader<C> contextLoader()                     // context loader configured at build time
 ResumePolicy<C> resumePolicy()
 RetryCoordinator<C> retryCoordinator()
+
+// State validation
+boolean isInitialState(String stateName)             // true if stateName is the initial state
+boolean isTerminal(String stateName)                 // true if stateName is terminal
 
 // Create instances
 StateMachineInstance<C> newInstance(C context)
@@ -86,8 +94,8 @@ StateMachineInstance<C> resume(C context, ExecutionSnapshot snapshot)
 StateMachineInstance<C> resume(C context, ExecutionSnapshot snapshot, SnapshotRepository repo)
 
 // Create a manager bound to this definition
-StateMachineManager<C> newManager(Function<String, C> contextLoader)
-StateMachineManager<C> newManager(SnapshotRepository repository, Function<String, C> contextLoader)
+StateMachineManager<C> newManager()
+StateMachineManager<C> newManager(SnapshotRepository repository)
 ```
 
 ---
@@ -97,12 +105,18 @@ StateMachineManager<C> newManager(SnapshotRepository repository, Function<String
 One live execution. **Not thread-safe.** Protect with the manager's lock or your own.
 
 ```java
+// Identity and state
 String executionId()               // snapshot storage key
 StateDefinition<C> currentState()  // current position
 ExecutionStatus status()           // RUNNING | COMPLETED | FAILED
 ExecutionRecord executionRecord()  // full step history (internal use)
 C context()                        // the mutable context object
 
+// State validation
+boolean isInInitialState()         // true if currently in initial state
+boolean isInTerminalState()        // true if current state is terminal
+
+// Status convenience predicates
 boolean isRunning()
 boolean isCompleted()
 boolean isFailed()
@@ -384,40 +398,126 @@ Each event type carries `executionId()`, `machineId()`, and `occurredAt()`. Addi
 
 ### `StateMachineManager<C>`
 
+Request handling and concurrent execution protection.
+
 ```java
+// Event-driven transitions
 ManagedTransitionResult<C> trigger(String executionId, String event)
 ManagedTransitionResult<C> trigger(String executionId, String event, C contextOverride)
+
+// Retry (resume from FAILED state without new event)
 ManagedTransitionResult<C> proceed(String executionId)
 ManagedTransitionResult<C> proceed(String executionId, C contextOverride)
-Optional<ExecutionSnapshot> snapshotOf(String executionId)   // read-only
-void recoverPendingRetries()   // call once on startup
+
+// Explicit initialization (setup in initial state)
+ManagedTransitionResult<C> initialize(String executionId)
+ManagedTransitionResult<C> initialize(String executionId, C contextOverride)
+
+// Snapshot inspection
+Optional<ExecutionSnapshot> snapshotOf(String executionId)   // read-only; no side effects
+
+// Startup recovery
+void recoverPendingRetries()   // call once on startup; resumes scheduled retries from last run
+
+// State validation
+boolean isInitialState(String stateName)
+boolean isTerminal(String stateName)
+
+// Context loader override
+StateMachineManager<C> withContextLoader(ContextLoader<C> contextLoader)
 ```
 
-Throws:
+**Per-execution lock:** Each `executionId` is protected by a non-blocking `ReentrantLock`. If another thread holds the lock, `ConcurrentExecutionException` is thrown (HTTP 409). Lock is released immediately after the call completes.
+
+**Throws:**
 - `ConcurrentExecutionException` — another request holds the lock; map to HTTP 409
 - `CompletedMachineException` — execution already completed; map to HTTP 409 or 422
 - `InvalidEventException` — no valid transition for the event; map to HTTP 400
 - `ConcurrentRetryException` — a retry is in progress; do not manually proceed
 
-See [Use cases — HTTP manager](03-use-cases.md#b-http-request-driven-workflow) for a complete example.
+See [Use cases — HTTP manager](03-use-cases.md#b-http-request-driven-workflow) and [State validation](03-use-cases.md#i-state-validation--safe-initialterminal-checks) for examples.
 
 ---
 
 ### `ManagedTransitionResult<C>`
 
+Result of a manager request: state transition, execution status, and failure details.
+
 ```java
+// Execution tracking
 String getExecutionId()
 String getFromState()
 String getToState()
-ExecutionStatus getExecutionStatus()     // RUNNING | COMPLETED | FAILED
-boolean isProceededFromFailure()         // true if manager auto-proceeded before applying the event
-String getFailedSubStepName()           // non-null only when status == FAILED
-String getFailedStateName()             // non-null only when status == FAILED
+ExecutionStatus getExecutionStatus()                // RUNNING | COMPLETED | FAILED
 
+// Failure context (non-null only when status == FAILED)
+String getFailedSubStepName()
+String getFailedStateName()
+Throwable getRootCause()                           // underlying exception from the sub-step
+
+// Recovery hint
+boolean isProceededFromFailure()                   // true if manager auto-proceeded before applying the event
+
+// Convenience predicates
 boolean isRunning()
 boolean isCompleted()
 boolean isFailed()
 ```
+
+**`getRootCause()`** is the underlying exception thrown by the failed sub-step, wrapped in a `SubStepExecutionException`. Use it to make recovery decisions:
+
+```java
+ManagedTransitionResult<OrderContext> result = manager.trigger(orderId, "PROCESS");
+if (result.isFailed()) {
+    Throwable cause = result.getRootCause();
+    if (cause instanceof InventoryException) {
+        // Out of stock
+    } else if (cause instanceof PaymentException) {
+        // Payment failure
+    }
+}
+```
+
+See [Use cases — Exception handling](03-use-cases.md#k-exception-handling-with-getrootcause) for detailed examples.
+
+---
+
+### `ContextLoader<C>`
+
+Loads a fresh context for a given execution ID. Called by the manager on every request and by the retry coordinator before each retry attempt.
+
+```java
+@FunctionalInterface
+public interface ContextLoader<C> {
+    C load(String executionId) throws Exception;
+}
+```
+
+**Responsibility:** Restore all intermediate results that completed sub-steps wrote to durable storage. On resume after failure, the library calls `contextLoader.load(executionId)` to reconstruct the context as it would have been at the point of failure.
+
+**Checked exceptions:** Unlike `Function<String, C>`, this interface allows `throws Exception`, so database and file operations do not require try-catch wrapping.
+
+```java
+ContextLoader<OrderContext> contextLoader = orderId -> {
+    Order order = orderRepository.findById(orderId);
+    OrderContext ctx = new OrderContext(order);
+    
+    // Restore intermediate results from completed sub-steps
+    ctx.setReservationId(inventoryService.getReservationId(orderId));
+    ctx.setPaymentRef(paymentService.getPaymentRef(orderId));
+    
+    return ctx;
+};
+
+StateMachineDefinition<OrderContext> definition = StateMachine.<OrderContext>define("order-workflow")
+    .initial("PENDING")
+    .snapshotRepository(repository)
+    .contextLoader(contextLoader)
+    // ...
+    .build();
+```
+
+See [Persistence — Context on resume](05-persistence-and-retry.md#context-on-resume) for design rules and examples.
 
 ---
 
@@ -482,6 +582,56 @@ boolean shouldSkip(String stateName, String subStepName, ExecutionSnapshot snaps
 ```
 
 Custom implementations can add additional skip logic (e.g. always re-run certain idempotent steps for safety).
+
+---
+
+## JDBC persistence — `hypercell.opensource.stateful.fsm.jdbc`
+
+### `JdbcSnapshotRepository`
+
+Distributed, optimistic-locking-based snapshot persistence for multi-replica deployments.
+
+```java
+public class JdbcSnapshotRepository implements SnapshotRepository {
+    public JdbcSnapshotRepository(DataSource dataSource)
+    
+    // Inherited from SnapshotRepository
+    void save(String executionId, ExecutionSnapshot snapshot)
+    Optional<ExecutionSnapshot> load(String executionId)
+    void delete(String executionId)
+    List<ExecutionSnapshot> listPendingRetries()
+}
+```
+
+**Features:**
+- Automatic schema creation on first use (if table doesn't exist)
+- Optimistic locking via `version` column prevents conflicting concurrent updates
+- Sub-step results stored as JSON for cross-database portability
+- Supports PostgreSQL, MySQL, MariaDB, H2, SQLite, Oracle
+- Integration with Spring Boot: see [`fsm-spring-boot-starter-jdbc`](08-jdbc-and-spring-boot.md)
+
+**Basic setup:**
+
+```java
+DataSource dataSource = ... // from connection pool
+
+SnapshotRepository repo = new JdbcSnapshotRepository(dataSource);
+
+StateMachineDefinition<OrderContext> definition = StateMachine.<OrderContext>define("order-workflow")
+    .initial("PENDING")
+    .snapshotRepository(repo)
+    .contextLoader(orderId -> orderRepository.findById(orderId))
+    // ...
+    .build();
+
+StateMachineManager<OrderContext> manager = StateMachine.manager(definition, repo);
+```
+
+**Spring Boot autoconfiguration:**
+
+The `fsm-spring-boot-starter-jdbc` module provides auto-configured `JdbcSnapshotRepository` bean using Spring's configured `DataSource`. No additional setup needed.
+
+See [Persistence & retry — JdbcSnapshotRepository](05-persistence-and-retry.md#jdbcsnapshotrepository-distributed-with-sql-databases) and [JDBC & Spring Boot](08-jdbc-and-spring-boot.md) for detailed examples.
 
 ---
 

@@ -156,9 +156,68 @@ SnapshotRepository repo = StateMachine.fileRepository(Path.of("/var/fsm-snapshot
 - Survives JVM restarts as long as the directory persists
 - **Not suitable for multi-JVM (distributed) deployments** — there is no cross-process locking
 
-### Custom implementation (distributed)
+### JdbcSnapshotRepository (distributed with SQL databases)
 
-For production deployments with multiple replicas, implement `SnapshotRepository` against your database or Redis. The interface is simple:
+For production deployments across multiple JVMs, use `JdbcSnapshotRepository`. It provides distributed, optimistic-locking-based persistence across PostgreSQL, MySQL, MariaDB, H2, SQLite, and Oracle.
+
+**Dependency:**
+```xml
+<dependency>
+    <groupId>hypercell.opensource.stateful.fsm</groupId>
+    <artifactId>fsm-jdbc</artifactId>
+    <version>1.0.0-beta</version>
+</dependency>
+```
+
+**Setup:**
+```java
+SnapshotRepository repo = new JdbcSnapshotRepository(dataSource);
+// Automatically creates schema on first use if it doesn't exist
+
+StateMachineDefinition<OrderContext> definition = StateMachine.<OrderContext>define("order-workflow")
+    .initial("PENDING")
+    .snapshotRepository(repo)
+    .contextLoader(orderId -> orderRepository.findById(orderId))
+    // ... rest of definition
+    .build();
+
+StateMachineManager<OrderContext> manager = StateMachine.manager(definition, repo);
+```
+
+**Features:**
+- Automatic schema creation (first startup only)
+- Optimistic locking via `version` column prevents conflicting updates from concurrent replicas
+- Sub-step results stored as JSON for portability across databases
+- Supports connection pooling (tested with HikariCP)
+- Composite key: execution snapshots keyed by `executionId` + `machineDefinitionId`
+
+**Database schema** (created automatically):
+```sql
+CREATE TABLE fsm_execution_snapshot (
+    execution_id VARCHAR(255),
+    machine_definition_id VARCHAR(255),
+    current_state_name VARCHAR(255),
+    failed_state_name VARCHAR(255),
+    failed_sub_step_name VARCHAR(255),
+    status VARCHAR(50),  -- FAILED, RETRY_SCHEDULED, RUNNING, COMPLETED
+    attempt_number INT,
+    completed_sub_steps JSON,
+    last_error_message TEXT,
+    last_error_type VARCHAR(255),
+    last_failed_at TIMESTAMP,
+    scheduled_retry_at TIMESTAMP,
+    version BIGINT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    PRIMARY KEY (execution_id, machine_definition_id)
+);
+```
+
+**Spring Boot integration** (optional): See [JDBC & Spring Boot autoconfiguration](08-jdbc-and-spring-boot.md).
+
+### Custom implementation (Redis or other backends)
+
+For Redis or custom backends, implement `SnapshotRepository` directly:
 
 ```java
 public interface SnapshotRepository {

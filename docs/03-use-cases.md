@@ -7,8 +7,9 @@ module (separate from the library JAR, includes Logback for visible log output):
 | Example class | Covers |
 |---|---|
 | [`SynchronousWorkflowExample`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/SynchronousWorkflowExample.java) | Direct `newInstance` + `trigger`, failure, `proceed()`, sub-step skip |
-| [`HttpManagerExample`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/HttpManagerExample.java) | `StateMachineManager`, contextLoader, 409/concurrent, completed-machine guard |
+| [`HttpManagerExample`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/HttpManagerExample.java) | `StateMachineManager`, contextLoader, 409/concurrent, completed-machine guard, `initialize()` |
 | [`FileSnapshotRetryExample`](../fsm-examples/src/main/java/hypercell/opensource/stateful/fsm/examples/FileSnapshotRetryExample.java) | `FileSnapshotRepository`, failure→snapshot→restart→manual retry, smart contextLoader |
+| `JdbcSnapshotExample` | `JdbcSnapshotRepository`, distributed persistence, multi-replica setup |
 
 Run any example with:
 ```
@@ -345,6 +346,157 @@ StateMachineDefinition<OrderContext> machine = StateMachine.<OrderContext>define
 ```
 
 Guards are evaluated in **definition order**. The first guard returning `true` fires. If no guard matches, `InvalidEventException` is thrown.
+
+---
+
+## H. Explicit initialization with `initialize()`
+
+When using `StateMachineManager`, you can explicitly initialize an execution (setup in the initial state) before triggering any events. This is useful for workflows that require explicit initialization or when you want to validate setup before processing.
+
+```java
+// Initialize the execution without any event
+ManagedTransitionResult<OrderContext> initResult = manager.initialize("order-123");
+
+if (initResult.getExecutionStatus() == ExecutionStatus.RUNNING) {
+    System.out.println("Order initialized in: " + initResult.getToState()); // PENDING
+}
+
+// Later, trigger events
+ManagedTransitionResult<OrderContext> approveResult = manager.trigger("order-123", "APPROVE");
+```
+
+`initialize()` is idempotent — calling it multiple times returns the current state without re-executing initial sub-steps. This is useful for:
+- Workflows requiring explicit activation before processing
+- Defensive initialization with validation
+- Two-phase setup: initialize once, then trigger events as they arrive
+
+You can also supply a context override:
+
+```java
+OrderContext providedContext = new OrderContext("order-123");
+providedContext.setPreloadedData(...);
+
+ManagedTransitionResult<OrderContext> result = manager.initialize("order-123", providedContext);
+```
+
+---
+
+## I. State validation — safe initial/terminal checks
+
+The manager and instance both expose `isInitialState()` and `isTerminal()` for safe state type validation without hardcoding state names:
+
+```java
+@PostMapping("/orders/{orderId}/trigger/{event}")
+public ResponseEntity<?> triggerEvent(
+        @PathVariable String orderId,
+        @PathVariable String event) {
+
+    // Validate state names defensively
+    if (!manager.isInitialState("PENDING")) {
+        return ResponseEntity.status(500)
+            .body("Configuration error: PENDING is not the initial state");
+    }
+
+    Optional<ExecutionSnapshot> snapshot = manager.snapshotOf(orderId);
+    
+    // Fresh orders start in initial state
+    if (snapshot.isEmpty()) {
+        ManagedTransitionResult<OrderContext> initResult = manager.initialize(orderId);
+        if (initResult.isFailed()) {
+            return ResponseEntity.status(500).body("Initialization failed");
+        }
+    }
+
+    ManagedTransitionResult<OrderContext> result = manager.trigger(orderId, event);
+    
+    // Detect terminal states
+    if (manager.isTerminal(result.getToState())) {
+        // Cleanup or audit logging
+        logger.info("Order {} completed in state {}", orderId, result.getToState());
+    }
+
+    return ResponseEntity.ok(result);
+}
+```
+
+This pattern protects against configuration changes (e.g., renaming the initial state) without requiring code updates.
+
+---
+
+## J. Distributed deployment with JDBC and Spring Boot
+
+For multi-replica production deployments, use `JdbcSnapshotRepository` with Spring Boot autoconfiguration. This provides distributed, database-backed persistence with automatic schema creation.
+
+See [JDBC & Spring Boot autoconfiguration](08-jdbc-and-spring-boot.md) for a complete example. Quick setup:
+
+```xml
+<dependency>
+    <groupId>hypercell.opensource.stateful.fsm</groupId>
+    <artifactId>fsm-spring-boot-starter-jdbc</artifactId>
+    <version>1.0.0-beta</version>
+</dependency>
+```
+
+```properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/myapp
+spring.datasource.username=fsm_user
+spring.datasource.password=secure_password
+```
+
+```java
+@Bean
+public StateMachineManager<OrderContext> orderManager(
+        StateMachineDefinition<OrderContext> definition,
+        JdbcSnapshotRepository snapshotRepository) {
+    return StateMachine.manager(definition, snapshotRepository);
+}
+```
+
+All `trigger()` and `proceed()` calls use optimistic locking to ensure only one replica commits a snapshot at a time. The library automatically retries transient conflicts.
+
+---
+
+## K. Exception handling with `getRootCause()`
+
+When a sub-step fails, `ManagedTransitionResult` exposes the underlying exception via `getRootCause()`. This lets you make informed recovery decisions without catching exceptions:
+
+```java
+ManagedTransitionResult<OrderContext> result = manager.trigger(orderId, "PROCESS");
+
+if (result.isFailed()) {
+    String failedStep = result.getFailedSubStepName();
+    Throwable rootCause = result.getRootCause();
+
+    if (rootCause instanceof InventoryException) {
+        // Out of stock — retry or notify customer
+        logger.warn("Inventory failure at step {}: {}", failedStep, rootCause.getMessage());
+        // Trigger manual process or escalation
+    } else if (rootCause instanceof PaymentException) {
+        // Payment gateway issue — auto-retry or manual review
+        logger.warn("Payment failure at step {}: {}", failedStep, rootCause.getMessage());
+        // Request manual payment retry
+    } else if (rootCause instanceof TimeoutException) {
+        // Transient failure — likely to succeed on retry
+        logger.warn("Timeout at step {}", failedStep);
+        // Will auto-retry based on retry policy
+    } else {
+        // Unexpected error
+        logger.error("Unexpected failure at step {}", failedStep, rootCause);
+        // Manual escalation required
+    }
+
+    return ResponseEntity.status(500).body(Map.of(
+        "failedStep", failedStep,
+        "errorType", rootCause.getClass().getSimpleName(),
+        "errorMessage", rootCause.getMessage()
+    ));
+}
+```
+
+This pattern enables:
+- **Differentiated error responses** — 503 for transient (timeout), 409 for conflict (inventory), 400 for validation
+- **Targeted recovery logic** — retry policy decisions per error type
+- **Better observability** — expose error details in API responses and logs
 
 Guards must be **pure** (read-only, side-effect-free). See [Concepts — Guards](01-concepts.md#guards).
 

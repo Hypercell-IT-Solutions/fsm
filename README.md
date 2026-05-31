@@ -15,9 +15,14 @@ Define your workflow once as a type-safe state machine. Run it synchronously in 
 - **Snapshot-based persistence** — failures are checkpointed; the machine resumes exactly where it stopped
 - **Automatic retry** — exponential backoff, fixed delay, or no-auto-retry; pluggable policies
 - **HTTP manager** — per-execution locking, context loading, and the full load→execute→save cycle in one call
+- **Explicit initialization** — `initialize()` method for explicit setup in initial state without events
+- **State validation** — safe `isInitialState()` and `isTerminal()` checks without hardcoding state names
+- **Exception details** — `getRootCause()` on results for targeted error handling
 - **Startup recovery** — `recoverPendingRetries()` reschedules in-flight retries after a process restart
 - **Event listeners** — lifecycle hooks for observability, auditing, and metrics
-- **Pluggable storage** — swap `InMemorySnapshotRepository` (tests) or `FileSnapshotRepository` (single-JVM) for your own database/Redis implementation
+- **JDBC persistence** — `JdbcSnapshotRepository` for distributed multi-replica deployments (PostgreSQL, MySQL, H2, SQLite, Oracle)
+- **Spring Boot autoconfiguration** — optional `fsm-spring-boot-starter-jdbc` for zero-config JDBC setup
+- **Pluggable storage** — swap `InMemorySnapshotRepository` (tests), `FileSnapshotRepository` (single-JVM), or `JdbcSnapshotRepository` (distributed)
 - **Spring-friendly** — class-based `StateConfigurer` and `SubStepHandler` interfaces for dependency injection
 
 ---
@@ -64,10 +69,11 @@ instance.trigger("COMPLETE");    // PROCESSING → SHIPPED (terminal, status = C
 |---|---|
 | [Concepts](docs/01-concepts.md) | Mental model — states, transitions, sub-steps, lifecycle |
 | [Getting started](docs/02-getting-started.md) | Step-by-step tutorial |
-| [Use cases](docs/03-use-cases.md) | Recipes: HTTP manager, auto-retry, Spring DI, guards, recovery |
+| [Use cases](docs/03-use-cases.md) | Recipes: HTTP manager, auto-retry, Spring DI, guards, state validation, JDBC, exception handling |
 | [Threading & safety](docs/04-threading-and-safety.md) | Thread-safety contracts for every class |
-| [Persistence & retry](docs/05-persistence-and-retry.md) | Snapshots, SnapshotStatus, retry policies, startup recovery |
-| [API reference](docs/06-api-reference.md) | Full reference for all public types |
+| [Persistence & retry](docs/05-persistence-and-retry.md) | Snapshots, SnapshotStatus, retry policies, InMemory/File/JDBC repositories, startup recovery |
+| [API reference](docs/06-api-reference.md) | Full reference for all public types, including ContextLoader and JdbcSnapshotRepository |
+| [JDBC & Spring Boot](docs/08-jdbc-and-spring-boot.md) | Distributed deployments with `JdbcSnapshotRepository` and Spring Boot autoconfiguration |
 | [Limitations & roadmap](docs/07-limitations.md) | Known bugs, gaps, and future improvement ideas |
 
 ---
@@ -76,17 +82,28 @@ instance.trigger("COMPLETE");    // PROCESSING → SHIPPED (terminal, status = C
 
 ```
 fsm-library/
-└── fsm-core/          Java 17, Maven, SLF4J logging
-    └── src/main/java/hypercell/opensource/stateful/fsm/
-        ├── StateMachine.java          entry point (static factories)
-        ├── builder/                   fluent DSL
-        ├── core/                      public interfaces
-        ├── execution/                 runtime (internal)
-        ├── exception/                 typed exceptions
-        ├── listener/                  event bus & lifecycle callbacks
-        ├── manager/                   HTTP request orchestration
-        ├── resume/                    snapshots & persistence
-        └── retry/                     retry policies & scheduling
+├── fsm-core/                       Core library (Java 17, SLF4J logging)
+│   └── src/main/java/.../fsm/
+│       ├── StateMachine.java       entry point (static factories)
+│       ├── builder/                fluent DSL
+│       ├── core/                   public interfaces (definitions, instances, managers)
+│       ├── execution/              runtime engine (internal)
+│       ├── exception/              typed exceptions
+│       ├── listener/               event bus & lifecycle callbacks
+│       ├── manager/                HTTP request orchestration
+│       ├── resume/                 snapshots & persistence
+│       └── retry/                  retry policies & scheduling
+│
+├── fsm-jdbc/                       JDBC-based persistence (PostgreSQL, MySQL, H2, SQLite, Oracle)
+│   └── JdbcSnapshotRepository      optimistic-locking-based snapshots for distributed deployments
+│
+├── fsm-spring-boot-starter-jdbc/   Spring Boot autoconfiguration for JDBC
+│   └── auto-configures JdbcSnapshotRepository using Spring's DataSource
+│
+└── fsm-examples/                   Runnable examples demonstrating all patterns
+    ├── SynchronousWorkflowExample  direct instance use
+    ├── HttpManagerExample          HTTP-driven manager with context loaders
+    └── FileSnapshotRetryExample    file-based persistence with auto-retry
 ```
 
 ---
