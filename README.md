@@ -1,33 +1,47 @@
-# fsm-library
+# FSM Library — Java Finite State Machine for Distributed Systems
 
-A Java 17 library for building **stateful, resumable finite state machines**.
+A lightweight, production-ready **Java finite state machine (FSM) library** for building stateful, resumable workflows. Designed for distributed Java applications where workflow execution spans multiple HTTP requests, process restarts, and service replicas.
 
-Define your workflow once as a type-safe state machine. Run it synchronously in a single process, or drive it across multiple HTTP requests with full failure recovery and automatic retry — without writing any of the orchestration plumbing yourself.
+Define your workflow as a **type-safe state machine** in Java 17. Run it synchronously in a single process, or drive it across multiple HTTP requests with full failure recovery and automatic retry — without writing any orchestration plumbing yourself.
 
 > **Status:** 1.0.x-beta — public API is stable but may see minor changes before 1.0.0 GA.
 
 ---
 
+## Why use this library?
+
+Most Java workflow libraries are either too heavy (full BPM engines) or too simple (no persistence). This library sits in between: a focused FSM engine built specifically for **distributed Java microservices** that need:
+
+- **Failure recovery** — sub-steps are checkpointed; the machine resumes exactly where it stopped after a crash or restart
+- **Automatic retry** — configurable exponential backoff or fixed delay between retry attempts
+- **Concurrent request safety** — per-execution locking prevents two HTTP requests from corrupting the same workflow
+- **Database persistence** — built-in JDBC support for PostgreSQL, MySQL, MariaDB, H2, SQLite, and Oracle
+- **Spring Boot integration** — zero-config autoconfiguration with `fsm-spring-boot-starter-jdbc`
+
+---
+
 ## Features
 
-- **Fluent DSL** — define states, transitions, guards, and sub-steps with a readable builder
+- **Fluent DSL** — define states, transitions, guards, and sub-steps with a readable Java builder
 - **Sub-step tracking** — granular named work units; completed ones are skipped on resume
-- **Snapshot-based persistence** — failures are checkpointed; the machine resumes exactly where it stopped
-- **Automatic retry** — exponential backoff, fixed delay, or no-auto-retry; pluggable policies
+- **Snapshot-based persistence** — failures are checkpointed; execution resumes exactly at the failed step
+- **Automatic retry** — exponential backoff, fixed delay, or no-auto-retry; pluggable retry policies
 - **HTTP manager** — per-execution locking, context loading, and the full load→execute→save cycle in one call
-- **Explicit initialization** — `initialize()` method for explicit setup in initial state without events
+- **Explicit initialization** — `initialize()` for explicit setup in initial state without triggering events
 - **State validation** — safe `isInitialState()` and `isTerminal()` checks without hardcoding state names
-- **Exception details** — `getRootCause()` on results for targeted error handling
+- **Exception details** — `getRootCause()` on results for targeted error handling and recovery logic
 - **Startup recovery** — `recoverPendingRetries()` reschedules in-flight retries after a process restart
 - **Event listeners** — lifecycle hooks for observability, auditing, and metrics
-- **JDBC persistence** — `JdbcSnapshotRepository` for distributed multi-replica deployments (PostgreSQL, MySQL, H2, SQLite, Oracle)
+- **JDBC persistence** — `JdbcSnapshotRepository` for distributed multi-replica deployments
 - **Spring Boot autoconfiguration** — optional `fsm-spring-boot-starter-jdbc` for zero-config JDBC setup
-- **Pluggable storage** — swap `InMemorySnapshotRepository` (tests), `FileSnapshotRepository` (single-JVM), or `JdbcSnapshotRepository` (distributed)
-- **Spring-friendly** — class-based `StateConfigurer` and `SubStepHandler` interfaces for dependency injection
+- **Pluggable storage** — `InMemorySnapshotRepository` (tests), `FileSnapshotRepository` (single-JVM), or `JdbcSnapshotRepository` (distributed)
+- **Spring-friendly** — class-based `StateConfigurer` and `SubStepHandler` interfaces for Spring dependency injection
 
 ---
 
 ## Quick start
+
+Add the dependency to your `pom.xml`:
 
 ```xml
 <dependency>
@@ -36,6 +50,8 @@ Define your workflow once as a type-safe state machine. Run it synchronously in 
     <version>1.0.0-beta</version>
 </dependency>
 ```
+
+Define and run a state machine:
 
 ```java
 StateMachineDefinition<OrderContext> machine = StateMachine.<OrderContext>define("order-workflow")
@@ -61,6 +77,21 @@ instance.trigger("APPROVE");     // PENDING → PROCESSING (runs all 3 sub-steps
 instance.trigger("COMPLETE");    // PROCESSING → SHIPPED (terminal, status = COMPLETED)
 ```
 
+For distributed deployments with Spring Boot and PostgreSQL, add the starter:
+
+```xml
+<dependency>
+    <groupId>io.hypercell</groupId>
+    <artifactId>fsm-spring-boot-starter-jdbc</artifactId>
+    <version>1.0.0-beta</version>
+</dependency>
+```
+
+```properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/myapp
+fsm.jdbc.dialect=postgresql
+```
+
 ---
 
 ## Documentation
@@ -72,9 +103,9 @@ instance.trigger("COMPLETE");    // PROCESSING → SHIPPED (terminal, status = C
 | [Use cases](docs/03-use-cases.md) | Recipes: HTTP manager, auto-retry, Spring DI, guards, state validation, JDBC, exception handling |
 | [Threading & safety](docs/04-threading-and-safety.md) | Thread-safety contracts for every class |
 | [Persistence & retry](docs/05-persistence-and-retry.md) | Snapshots, SnapshotStatus, retry policies, InMemory/File/JDBC repositories, startup recovery |
-| [API reference](docs/06-api-reference.md) | Full reference for all public types, including ContextLoader and JdbcSnapshotRepository |
+| [API reference](docs/06-api-reference.md) | Full reference for all public types |
 | [JDBC & Spring Boot](docs/08-jdbc-and-spring-boot.md) | Distributed deployments with `JdbcSnapshotRepository` and Spring Boot autoconfiguration |
-| [Limitations & roadmap](docs/07-limitations.md) | Known bugs, gaps, and future improvement ideas |
+| [Limitations & roadmap](docs/07-limitations.md) | Known gaps and future improvement ideas |
 
 ---
 
@@ -83,7 +114,7 @@ instance.trigger("COMPLETE");    // PROCESSING → SHIPPED (terminal, status = C
 ```
 fsm-library/
 ├── fsm-core/                       Core library (Java 17, SLF4J logging)
-│   └── src/main/java/.../fsm/
+│   └── src/main/java/io/hypercell/fsm/
 │       ├── StateMachine.java       entry point (static factories)
 │       ├── builder/                fluent DSL
 │       ├── core/                   public interfaces (definitions, instances, managers)
@@ -94,8 +125,8 @@ fsm-library/
 │       ├── resume/                 snapshots & persistence
 │       └── retry/                  retry policies & scheduling
 │
-├── fsm-jdbc/                       JDBC-based persistence (PostgreSQL, MySQL, H2, SQLite, Oracle)
-│   └── JdbcSnapshotRepository      optimistic-locking-based snapshots for distributed deployments
+├── fsm-jdbc/                       JDBC persistence (PostgreSQL, MySQL, MariaDB, H2, SQLite, Oracle)
+│   └── JdbcSnapshotRepository      distributed snapshots with optimistic locking
 │
 ├── fsm-spring-boot-starter-jdbc/   Spring Boot autoconfiguration for JDBC
 │   └── auto-configures JdbcSnapshotRepository using Spring's DataSource
