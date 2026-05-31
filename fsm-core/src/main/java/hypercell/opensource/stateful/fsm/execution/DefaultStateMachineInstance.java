@@ -321,6 +321,16 @@ public class DefaultStateMachineInstance<C> implements StateMachineInstance<C> {
     }
 
     @Override
+    public boolean isInInitialState() {
+        return definition.isInitialState(currentState.name());
+    }
+
+    @Override
+    public boolean isInTerminalState() {
+        return currentState.isTerminal();
+    }
+
+    @Override
     public boolean isCompleted() {
         return executionStatus == ExecutionStatus.COMPLETED;
     }

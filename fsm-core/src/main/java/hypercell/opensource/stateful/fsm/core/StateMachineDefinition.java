@@ -21,10 +21,14 @@ import java.util.List;
  */
 public interface StateMachineDefinition<C> {
 
-    /** Stable identifier for this machine type, set in {@code StateMachine.define(id)}. */
+    /**
+     * Stable identifier for this machine type, set in {@code StateMachine.define(id)}.
+     */
     String id();
 
-    /** The state the machine enters when a new instance is created. */
+    /**
+     * The state the machine enters when a new instance is created.
+     */
     StateDefinition<C> initialState();
 
     /**
@@ -45,6 +49,25 @@ public interface StateMachineDefinition<C> {
      * Returns an empty list for terminal states.
      */
     List<TransitionDefinition<C>> transitionsFrom(String stateName);
+
+    /**
+     * Check if a state is the initial state of this machine.
+     * Useful for validation and defensive programming against definition changes.
+     *
+     * @param stateName the state name to check
+     * @return true if the state is the initial state, false otherwise
+     */
+    boolean isInitialState(String stateName);
+
+    /**
+     * Check if a state is terminal.
+     * Useful for validation and determining if a machine execution is complete.
+     *
+     * @param stateName the state name to check
+     * @return true if the state is terminal, false otherwise
+     * @throws hypercell.opensource.stateful.fsm.exception.InvalidStateException if no state with that name exists
+     */
+    boolean isTerminal(String stateName);
 
     /**
      * The policy that decides which sub-steps to skip when resuming after failure.
@@ -79,7 +102,7 @@ public interface StateMachineDefinition<C> {
      * Use this when your business entity already has a meaningful ID
      * (e.g. {@code orderId}) so the snapshot key matches your domain.
      *
-     * @param ctx     the mutable domain object
+     * @param ctx         the mutable domain object
      * @param executionId stable identifier; becomes the snapshot storage key
      */
     StateMachineInstance<C> newInstance(C ctx, String executionId);
@@ -116,7 +139,7 @@ public interface StateMachineDefinition<C> {
      * <p>
      * This method does NOT re-run any sub-steps. It is purely a position restore.
      *
-     * @param ctx  a fresh ctx loaded for this execution
+     * @param ctx      a fresh ctx loaded for this execution
      * @param snapshot a snapshot with status {@code RUNNING}
      */
     StateMachineInstance<C> reconstitute(C ctx, ExecutionSnapshot snapshot);
@@ -140,7 +163,7 @@ public interface StateMachineDefinition<C> {
      * the completed sub-step results from the snapshot so the resume policy can
      * correctly skip them.
      *
-     * @param ctx  a fresh ctx loaded for this execution (see
+     * @param ctx      a fresh ctx loaded for this execution (see
      *                 <a href="https://github.com/hypercell/fsm-library/blob/main/docs/05-persistence-and-retry.md#ctx-on-resume">Context on resume</a>)
      * @param snapshot a snapshot with status {@code FAILED}
      */

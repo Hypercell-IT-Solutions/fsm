@@ -98,6 +98,17 @@ public class DefaultStateMachineDefinition<C> implements StateMachineDefinition<
     }
 
     @Override
+    public boolean isInitialState(String stateName) {
+        return initialState.name().equals(stateName);
+    }
+
+    @Override
+    public boolean isTerminal(String stateName) {
+        StateDefinition<C> state = stateByName(stateName);
+        return state.isTerminal();
+    }
+
+    @Override
     public StateMachineInstance<C> newInstance(C ctx) {
         return new DefaultStateMachineInstance<>(
                 this, initialState, ctx, snapshotRepository, retryCoordinator, eventBus);

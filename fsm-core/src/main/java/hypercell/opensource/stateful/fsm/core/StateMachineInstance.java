@@ -104,12 +104,35 @@ public interface StateMachineInstance<C> {
 
     ExecutionSnapshot takeCheckpoint();
 
-    /** {@code true} when status is {@code COMPLETED}. */
+    /**
+     * Check if the current state is the initial state.
+     * Useful for validation after initialization or recovery.
+     * Delegates to the machine definition.
+     *
+     * @return true if currently in the initial state, false otherwise
+     */
+    boolean isInInitialState();
+
+    /**
+     * Check if the current state is terminal.
+     * Equivalent to {@code currentState().isTerminal()}.
+     *
+     * @return true if the current state is terminal, false otherwise
+     */
+    boolean isInTerminalState();
+
+    /**
+     * {@code true} when status is {@code COMPLETED}.
+     */
     boolean isCompleted();
 
-    /** {@code true} when status is {@code FAILED}. */
+    /**
+     * {@code true} when status is {@code FAILED}.
+     */
     boolean isFailed();
 
-    /** {@code true} when status is {@code RUNNING}. */
+    /**
+     * {@code true} when status is {@code RUNNING}.
+     */
     boolean isRunning();
 }

@@ -13,7 +13,9 @@
 
     <artifactId>fsm-core</artifactId>
     <name>FSM Core</name>
-    <description>Core finite state machine library with state definitions, transitions, guards, actions, sub-steps, and snapshot-based persistence for failure recovery and retries.</description>
+    <description>Core finite state machine library with state definitions, transitions, guards, actions, sub-steps, and
+        snapshot-based persistence for failure recovery and retries.
+    </description>
 
     <dependencies>
         <dependency>
@@ -48,6 +50,9 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <doclint>none</doclint>
+                </configuration>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>

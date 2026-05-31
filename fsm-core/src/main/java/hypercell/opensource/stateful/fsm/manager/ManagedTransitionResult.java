@@ -32,6 +32,13 @@ public final class ManagedTransitionResult<C> {
     private final String failedSubStepName;
     private final String failedStateName;
 
+    /**
+     * The root exception that caused the failure, if available.
+     * Only populated when executionStatus == FAILED. Allows callers to handle
+     * different exception types (e.g., SQLException vs other exceptions).
+     */
+    private final Throwable rootCause;
+
     private ManagedTransitionResult(Builder<C> b) {
         this.executionId = b.executionId;
         this.fromState = b.fromState;
@@ -40,24 +47,33 @@ public final class ManagedTransitionResult<C> {
         this.proceededFromFailure = b.proceededFromFailure;
         this.failedSubStepName = b.failedSubStepName;
         this.failedStateName = b.failedStateName;
+        this.rootCause = b.rootCause;
     }
 
-    /** The business entity ID passed to {@code manager.trigger(executionId, event)}. */
+    /**
+     * The business entity ID passed to {@code manager.trigger(executionId, event)}.
+     */
     public String getExecutionId() {
         return executionId;
     }
 
-    /** The state the machine was in before this transition. */
+    /**
+     * The state the machine was in before this transition.
+     */
     public String getFromState() {
         return fromState;
     }
 
-    /** The state the machine is in after this transition (or the state it failed in). */
+    /**
+     * The state the machine is in after this transition (or the state it failed in).
+     */
     public String getToState() {
         return toState;
     }
 
-    /** Overall lifecycle status after this operation: {@code RUNNING}, {@code COMPLETED}, or {@code FAILED}. */
+    /**
+     * Overall lifecycle status after this operation: {@code RUNNING}, {@code COMPLETED}, or {@code FAILED}.
+     */
     public ExecutionStatus getExecutionStatus() {
         return executionStatus;
     }
@@ -71,27 +87,55 @@ public final class ManagedTransitionResult<C> {
         return proceededFromFailure;
     }
 
-    /** The sub-step name that failed; non-null only when {@link #getExecutionStatus()} is {@code FAILED}. */
+    /**
+     * The sub-step name that failed; non-null only when {@link #getExecutionStatus()} is {@code FAILED}.
+     */
     public String getFailedSubStepName() {
         return failedSubStepName;
     }
 
-    /** The state name in which failure occurred; non-null only when {@link #getExecutionStatus()} is {@code FAILED}. */
+    /**
+     * The state name in which failure occurred; non-null only when {@link #getExecutionStatus()} is {@code FAILED}.
+     */
     public String getFailedStateName() {
         return failedStateName;
     }
 
-    /** {@code true} when the execution reached a terminal state. */
+    /**
+     * The root cause of the failure, if available.
+     * Only populated when {@link #getExecutionStatus()} is {@code FAILED}.
+     * Allows callers to handle different exception types (e.g., check for SQLException).
+     * <p>
+     * Example:
+     * <pre>{@code
+     * if (result.isFailed() && result.getRootCause() instanceof SQLException) {
+     *     // Handle database error
+     * }
+     * }</pre>
+     *
+     * @return the exception that caused the failure, or null if unavailable
+     */
+    public Throwable getRootCause() {
+        return rootCause;
+    }
+
+    /**
+     * {@code true} when the execution reached a terminal state.
+     */
     public boolean isCompleted() {
         return executionStatus == ExecutionStatus.COMPLETED;
     }
 
-    /** {@code true} when the execution is ongoing and awaiting the next event. */
+    /**
+     * {@code true} when the execution is ongoing and awaiting the next event.
+     */
     public boolean isRunning() {
         return executionStatus == ExecutionStatus.RUNNING;
     }
 
-    /** {@code true} when a sub-step failed; the snapshot has been saved for retry. */
+    /**
+     * {@code true} when a sub-step failed; the snapshot has been saved for retry.
+     */
     public boolean isFailed() {
         return executionStatus == ExecutionStatus.FAILED;
     }
@@ -107,12 +151,16 @@ public final class ManagedTransitionResult<C> {
                 '}';
     }
 
-    /** For internal use — constructs results inside {@link hypercell.opensource.stateful.fsm.manager.DefaultStateMachineManager}. */
+    /**
+     * For internal use — constructs results inside {@link hypercell.opensource.stateful.fsm.manager.DefaultStateMachineManager}.
+     */
     public static <C> Builder<C> builder() {
         return new Builder<>();
     }
 
-    /** Internal builder; not part of the consumer-facing API. */
+    /**
+     * Internal builder; not part of the consumer-facing API.
+     */
     public static final class Builder<C> {
         private String executionId;
         private String fromState;
@@ -121,6 +169,7 @@ public final class ManagedTransitionResult<C> {
         private boolean proceededFromFailure = false;
         private String failedSubStepName;
         private String failedStateName;
+        private Throwable rootCause;
 
         public Builder<C> executionId(String v) {
             executionId = v;
@@ -154,6 +203,11 @@ public final class ManagedTransitionResult<C> {
 
         public Builder<C> failedStateName(String v) {
             failedStateName = v;
+            return this;
+        }
+
+        public Builder<C> rootCause(Throwable v) {
+            rootCause = v;
             return this;
         }
 

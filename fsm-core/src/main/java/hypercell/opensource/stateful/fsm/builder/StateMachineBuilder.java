@@ -259,6 +259,16 @@ public class StateMachineBuilder<C> {
         }
 
         @Override
+        public boolean isInitialState(String stateName) {
+            return d.isInitialState(stateName);
+        }
+
+        @Override
+        public boolean isTerminal(String stateName) {
+            return d.isTerminal(stateName);
+        }
+
+        @Override
         public ResumePolicy<C> resumePolicy() {
             return d.resumePolicy();
         }

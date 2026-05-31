@@ -88,10 +88,56 @@ public interface StateMachineManager<C> {
     ManagedTransitionResult<C> proceed(String executionId, C contextOverride);
 
     /**
+     * Initialize a new execution in the initial state without applying any event.
+     * <p>
+     * This method creates a fresh instance (executing the initial state's sub-steps),
+     * saves a checkpoint, and returns immediately. The execution stays in the initial
+     * state awaiting the first event. This is useful for workflows where setup is
+     * needed before the first business event arrives.
+     * <p>
+     * Uses the manager's configured contextLoader to load the initial context.
+     * <p>
+     * If the initial state's sub-steps fail, the execution is marked FAILED and
+     * the failure details are returned (like {@code trigger()} behavior).
+     * <p>
+     * LIFECYCLE: {@code initialize(id)} → execution in initial state → later: {@code trigger(id, event)}
+     *
+     * @param executionId your business entity ID (orderId, transactionId, etc.)
+     * @return result showing initial state with status RUNNING (or FAILED if sub-steps fail)
+     */
+    ManagedTransitionResult<C> initialize(String executionId);
+
+    /**
+     * Initialize with a caller-supplied context override.
+     * Useful when the initial context is available in the request.
+     *
+     * @param contextOverride the ctx to use; null falls back to the contextLoader
+     */
+    ManagedTransitionResult<C> initialize(String executionId, C contextOverride);
+
+    /**
      * Load the current snapshot without changing anything.
      * Returns empty if the execution has never started or has completed and been cleaned up.
      */
     Optional<ExecutionSnapshot> snapshotOf(String executionId);
+
+    /**
+     * Check if a state is the initial state of the machine definition.
+     * Useful for validation and defensive programming.
+     *
+     * @param stateName the state name to check
+     * @return true if the state is initial, false otherwise
+     */
+    boolean isInitialState(String stateName);
+
+    /**
+     * Check if a state is terminal in the machine definition.
+     * Useful for determining if a workflow is complete.
+     *
+     * @param stateName the state name to check
+     * @return true if the state is terminal, false otherwise
+     */
+    boolean isTerminal(String stateName);
 
     /**
      * Re-schedules retries for all FAILED/RETRY_SCHEDULED executions found

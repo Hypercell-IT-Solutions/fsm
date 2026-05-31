@@ -6,8 +6,8 @@ import hypercell.opensource.stateful.fsm.core.StateMachineDefinition;
 import hypercell.opensource.stateful.fsm.core.StateMachineInstance;
 import hypercell.opensource.stateful.fsm.exception.CompletedMachineException;
 import hypercell.opensource.stateful.fsm.exception.ConcurrentExecutionException;
-import hypercell.opensource.stateful.fsm.exception.SubStepExecutionException;
 import hypercell.opensource.stateful.fsm.exception.StateMachineException;
+import hypercell.opensource.stateful.fsm.exception.SubStepExecutionException;
 import hypercell.opensource.stateful.fsm.resume.ExecutionSnapshot;
 import hypercell.opensource.stateful.fsm.resume.SnapshotRepository;
 import hypercell.opensource.stateful.fsm.resume.SnapshotStatus;
@@ -98,6 +98,21 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
     }
 
     @Override
+    public ManagedTransitionResult<C> initialize(String executionId) {
+        return initialize(executionId, null);
+    }
+
+    @Override
+    public ManagedTransitionResult<C> initialize(String executionId, C contextOverride) {
+        ReentrantLock lock = acquireLock(executionId);
+        try {
+            return doInitialize(executionId, contextOverride);
+        } finally {
+            releaseLock(executionId, lock);
+        }
+    }
+
+    @Override
     public Optional<ExecutionSnapshot> snapshotOf(String executionId) {
         return repository.load(executionId);
     }
@@ -105,6 +120,16 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
     @Override
     public StateMachineManager<C> withContextLoader(ContextLoader<C> contextLoader) {
         return new DefaultStateMachineManager<>(definition, repository, contextLoader);
+    }
+
+    @Override
+    public boolean isInitialState(String stateName) {
+        return definition.isInitialState(stateName);
+    }
+
+    @Override
+    public boolean isTerminal(String stateName) {
+        return definition.isTerminal(stateName);
     }
 
     @Override
@@ -185,6 +210,7 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
                     .executionStatus(ExecutionStatus.FAILED)
                     .failedStateName(e.getStateName())
                     .failedSubStepName(e.getSubStepName())
+                    .rootCause(e.getCause())
                     .build();
         }
 
@@ -212,6 +238,7 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
                     .proceededFromFailure(true)
                     .failedStateName(e.getStateName())
                     .failedSubStepName(e.getSubStepName())
+                    .rootCause(e.getCause())
                     .build();
         }
 
@@ -255,6 +282,7 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
                     .proceededFromFailure(proceededFromFailure)
                     .failedStateName(e.getStateName())
                     .failedSubStepName(e.getSubStepName())
+                    .rootCause(e.getCause())
                     .build();
         }
     }
@@ -295,6 +323,56 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
                     .executionStatus(ExecutionStatus.FAILED)
                     .failedStateName(e.getStateName())
                     .failedSubStepName(e.getSubStepName())
+                    .rootCause(e.getCause())
+                    .build();
+        }
+    }
+
+    /**
+     * Initialize a new execution: create instance, run initial sub-steps, save checkpoint,
+     * stay in initial state. If already initialized, return the current state.
+     */
+    private ManagedTransitionResult<C> doInitialize(String executionId, C contextOverride) {
+        Optional<ExecutionSnapshot> existing = repository.load(executionId);
+        if (existing.isPresent()) {
+            ExecutionSnapshot snapshot = existing.get();
+            if (snapshot.isCompleted()) {
+                throw new CompletedMachineException(
+                        executionId, snapshot.getCurrentStateName());
+            }
+            ExecutionStatus status = snapshot.isFailed() ? ExecutionStatus.FAILED : ExecutionStatus.RUNNING;
+            ManagedTransitionResult.Builder<C> builder = ManagedTransitionResult.<C>builder()
+                    .executionId(executionId)
+                    .fromState(snapshot.getCurrentStateName())
+                    .toState(snapshot.getCurrentStateName())
+                    .executionStatus(status);
+            if (snapshot.isFailed()) {
+                builder.failedStateName(snapshot.getFailedStateName())
+                        .failedSubStepName(snapshot.getFailedSubStepName());
+            }
+            return builder.build();
+        }
+
+        String initialStateName = definition.initialState().name();
+        C ctx = resolveContext(executionId, contextOverride);
+
+        try {
+            definition.newInstance(ctx, executionId);
+            return ManagedTransitionResult.<C>builder()
+                    .executionId(executionId)
+                    .fromState(initialStateName)
+                    .toState(initialStateName)
+                    .executionStatus(ExecutionStatus.RUNNING)
+                    .build();
+        } catch (SubStepExecutionException e) {
+            return ManagedTransitionResult.<C>builder()
+                    .executionId(executionId)
+                    .fromState(initialStateName)
+                    .toState(initialStateName)
+                    .executionStatus(ExecutionStatus.FAILED)
+                    .failedStateName(e.getStateName())
+                    .failedSubStepName(e.getSubStepName())
+                    .rootCause(e.getCause())
                     .build();
         }
     }
