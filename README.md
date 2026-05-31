@@ -44,6 +44,13 @@ Most Java workflow libraries are either too heavy (full BPM engines) or too simp
 Add the dependency to your `pom.xml`:
 
 ```xml
+<repositories>
+    <repository>
+        <id>github</id>
+        <url>https://maven.pkg.github.com/Hypercell-IT-Solutions/fsm-library</url>
+    </repository>
+</repositories>
+
 <dependency>
     <groupId>io.hypercell</groupId>
     <artifactId>fsm-core</artifactId>
