@@ -8,7 +8,7 @@
     <parent>
         <groupId>hypercell.opensource.stateful.fsm</groupId>
         <artifactId>fsm-library</artifactId>
-        <version>1.0.1-beta</version>
+        <version>1.0.0-beta</version>
     </parent>
 
     <artifactId>fsm-core</artifactId>
