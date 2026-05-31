@@ -5,7 +5,7 @@
 
     <groupId>hypercell.opensource.stateful.fsm</groupId>
     <artifactId>fsm-library</artifactId>
-    <version>1.0.0-beta</version>
+    <version>1.0.1-beta</version>
     <packaging>pom</packaging>
 
     <name>FSM Library</name>
