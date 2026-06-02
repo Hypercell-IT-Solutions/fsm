@@ -23,4 +23,4 @@ jobs:
         run: mvn clean install
 
       - name: Build and test examples
-        run: mvn clean install -pl fsm-examples
+        run: mvn clean install -f fsm-examples/pom.xml
