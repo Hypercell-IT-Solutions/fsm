@@ -23,6 +23,7 @@
         <mvn.compiler.source>17</mvn.compiler.source>
         <mvn.compiler.target>17</mvn.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.deploy.skip>true</maven.deploy.skip>
 
         <spring-boot.version>3.1.5</spring-boot.version>
         <junit.version>5.10.0</junit.version>

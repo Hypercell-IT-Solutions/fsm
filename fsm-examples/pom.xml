@@ -16,7 +16,7 @@
     <description>Runnable examples for fsm-core. Not published as a library artifact.</description>
 
     <properties>
-        <mvn.deploy.skip>true</mvn.deploy.skip>
+        <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
 
     <dependencies>
