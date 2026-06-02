@@ -211,6 +211,7 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
                     .failedStateName(e.getStateName())
                     .failedSubStepName(e.getSubStepName())
                     .rootCause(e.getCause())
+                    .context(ctx)
                     .build();
         }
 
@@ -272,6 +273,7 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
                     .toState(instance.currentState().name())
                     .executionStatus(instance.status())
                     .proceededFromFailure(proceededFromFailure)
+                    .context(instance.context())
                     .build();
         } catch (SubStepExecutionException e) {
             return ManagedTransitionResult.<C>builder()
@@ -283,6 +285,7 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
                     .failedStateName(e.getStateName())
                     .failedSubStepName(e.getSubStepName())
                     .rootCause(e.getCause())
+                    .context(instance.context())
                     .build();
         }
     }
@@ -314,6 +317,7 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
                     .fromState(fromState)
                     .toState(instance.currentState().name())
                     .executionStatus(instance.status())
+                    .context(instance.context())
                     .build();
         } catch (SubStepExecutionException e) {
             return ManagedTransitionResult.<C>builder()
@@ -324,6 +328,7 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
                     .failedStateName(e.getStateName())
                     .failedSubStepName(e.getSubStepName())
                     .rootCause(e.getCause())
+                    .context(instance.context())
                     .build();
         }
     }
@@ -357,12 +362,13 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
         C ctx = resolveContext(executionId, contextOverride);
 
         try {
-            definition.newInstance(ctx, executionId);
+            StateMachineInstance<C> instance = definition.newInstance(ctx, executionId);
             return ManagedTransitionResult.<C>builder()
                     .executionId(executionId)
                     .fromState(initialStateName)
                     .toState(initialStateName)
                     .executionStatus(ExecutionStatus.RUNNING)
+                    .context(instance.context())
                     .build();
         } catch (SubStepExecutionException e) {
             return ManagedTransitionResult.<C>builder()
@@ -373,6 +379,7 @@ public class DefaultStateMachineManager<C> implements StateMachineManager<C> {
                     .failedStateName(e.getStateName())
                     .failedSubStepName(e.getSubStepName())
                     .rootCause(e.getCause())
+                    .context(ctx)
                     .build();
         }
     }

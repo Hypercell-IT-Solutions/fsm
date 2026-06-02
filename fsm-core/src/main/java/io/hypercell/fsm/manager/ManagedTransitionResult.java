@@ -39,6 +39,15 @@ public final class ManagedTransitionResult<C> {
      */
     private final Throwable rootCause;
 
+    /**
+     * The context object as it exists after execution completes.
+     * Sub-steps may have mutated it during the run, so this reflects the final state.
+     * <p>
+     * Null only for idempotent {@code initialize()} calls where a snapshot already
+     * existed and no execution was performed.
+     */
+    private final C context;
+
     private ManagedTransitionResult(Builder<C> b) {
         this.executionId = b.executionId;
         this.fromState = b.fromState;
@@ -48,6 +57,7 @@ public final class ManagedTransitionResult<C> {
         this.failedSubStepName = b.failedSubStepName;
         this.failedStateName = b.failedStateName;
         this.rootCause = b.rootCause;
+        this.context = b.context;
     }
 
     /**
@@ -120,6 +130,18 @@ public final class ManagedTransitionResult<C> {
     }
 
     /**
+     * The context object as it exists after execution completes.
+     * Sub-steps may have mutated it, so this reflects the post-execution state —
+     * no second DB load needed to build an HTTP response.
+     * <p>
+     * Null only for idempotent {@code initialize()} calls where a snapshot already
+     * existed and no execution was performed.
+     */
+    public C getContext() {
+        return context;
+    }
+
+    /**
      * {@code true} when the execution reached a terminal state.
      */
     public boolean isCompleted() {
@@ -170,6 +192,7 @@ public final class ManagedTransitionResult<C> {
         private String failedSubStepName;
         private String failedStateName;
         private Throwable rootCause;
+        private C context;
 
         public Builder<C> executionId(String v) {
             executionId = v;
@@ -208,6 +231,11 @@ public final class ManagedTransitionResult<C> {
 
         public Builder<C> rootCause(Throwable v) {
             rootCause = v;
+            return this;
+        }
+
+        public Builder<C> context(C v) {
+            context = v;
             return this;
         }
 
