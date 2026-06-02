@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.hypercell</groupId>
+        <groupId>net.hypercell</groupId>
         <artifactId>fsm-library</artifactId>
         <version>1.0.0-beta</version>
     </parent>
@@ -17,7 +17,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.hypercell</groupId>
+            <groupId>net.hypercell</groupId>
             <artifactId>fsm-core</artifactId>
             <version>${project.version}</version>
         </dependency>

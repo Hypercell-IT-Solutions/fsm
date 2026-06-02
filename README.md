@@ -44,15 +44,8 @@ Most Java workflow libraries are either too heavy (full BPM engines) or too simp
 Add the dependency to your `pom.xml`:
 
 ```xml
-<repositories>
-    <repository>
-        <id>github</id>
-        <url>https://maven.pkg.github.com/Hypercell-IT-Solutions/fsm-library</url>
-    </repository>
-</repositories>
-
 <dependency>
-    <groupId>io.hypercell</groupId>
+    <groupId>net.hypercell</groupId>
     <artifactId>fsm-core</artifactId>
     <version>1.0.0-beta</version>
 </dependency>
@@ -88,7 +81,7 @@ For distributed deployments with Spring Boot and PostgreSQL, add the starter:
 
 ```xml
 <dependency>
-    <groupId>io.hypercell</groupId>
+    <groupId>net.hypercell</groupId>
     <artifactId>fsm-spring-boot-starter-jdbc</artifactId>
     <version>1.0.0-beta</version>
 </dependency>

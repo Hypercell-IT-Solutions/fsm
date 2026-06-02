@@ -431,7 +431,7 @@ See [JDBC & Spring Boot autoconfiguration](08-jdbc-and-spring-boot.md) for a com
 
 ```xml
 <dependency>
-    <groupId>io.hypercell</groupId>
+    <groupId>net.hypercell</groupId>
     <artifactId>fsm-spring-boot-starter-jdbc</artifactId>
     <version>1.0.0-beta</version>
 </dependency>

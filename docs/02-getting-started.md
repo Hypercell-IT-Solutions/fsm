@@ -10,7 +10,7 @@ If you want a concepts primer first, read [Concepts](01-concepts.md).
 
 ```xml
 <dependency>
-    <groupId>io.hypercell</groupId>
+    <groupId>net.hypercell</groupId>
     <artifactId>fsm-core</artifactId>
     <version>1.0.0-beta</version>
 </dependency>
