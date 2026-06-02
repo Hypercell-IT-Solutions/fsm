@@ -17,8 +17,8 @@
 
     <properties>
         <maven.deploy.skip>true</maven.deploy.skip>
-        <central.publishing.skip>true</central.publishing.skip>
     </properties>
+
 
     <dependencies>
         <dependency>
@@ -52,7 +52,6 @@
                 </configuration>
             </plugin>
 
-            <!-- Allows: mvn -pl fsm-examples exec:java -Dexec.mainClass=... -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>

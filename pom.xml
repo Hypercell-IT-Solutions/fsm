@@ -39,7 +39,6 @@
 
     <modules>
         <module>fsm-core</module>
-        <module>fsm-examples</module>
         <module>fsm-jdbc</module>
         <module>fsm-spring-boot-starter-jdbc</module>
     </modules>
