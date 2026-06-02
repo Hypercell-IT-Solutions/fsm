@@ -433,7 +433,7 @@ See [JDBC & Spring Boot autoconfiguration](08-jdbc-and-spring-boot.md) for a com
 <dependency>
     <groupId>net.hypercell</groupId>
     <artifactId>fsm-spring-boot-starter-jdbc</artifactId>
-    <version>1.0.0-beta</version>
+    <version>1.0.0-SNAPSHOT</version>
 </dependency>
 ```
 

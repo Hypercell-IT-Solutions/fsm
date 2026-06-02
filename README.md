@@ -47,7 +47,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
     <groupId>net.hypercell</groupId>
     <artifactId>fsm-core</artifactId>
-    <version>1.0.0-beta</version>
+    <version>1.0.0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -83,7 +83,7 @@ For distributed deployments with Spring Boot and PostgreSQL, add the starter:
 <dependency>
     <groupId>net.hypercell</groupId>
     <artifactId>fsm-spring-boot-starter-jdbc</artifactId>
-    <version>1.0.0-beta</version>
+    <version>1.0.0-SNAPSHOT</version>
 </dependency>
 ```
 
